@@ -1,0 +1,212 @@
+/* Custom Calendar Styles for Working Hours and Busy Slots */
+
+/* Working hours highlighting */
+.rbc-calendar .rbc-time-view .rbc-time-content {
+  border-left: 1px solid #e5e7eb;
+}
+
+/* Time slot styling for working hours (8 AM - 7 PM) */
+.rbc-time-slot {
+  border-bottom: 1px solid #f3f4f6;
+}
+
+/* Style the time gutter to highlight working hours */
+.rbc-time-gutter .rbc-timeslot-group {
+  border-bottom: 1px solid #e5e7eb;
+  min-height: 60px; /* 1 hour slots */
+}
+
+/* Highlight working hours area - 8 AM (slot 8) to 7 PM (slot 19) */
+.rbc-day-slot .rbc-time-slot:nth-child(n+9):nth-child(-n+19) {
+  background-color: #f9fafb;
+}
+
+/* Custom event styling */
+.rbc-event {
+  border-radius: 6px !important;
+  border: 2px solid transparent !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  padding: 2px 6px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Busy/Past appointment events (red) */
+.rbc-event.busy-appointment {
+  background-color: #dc2626 !important;
+  border-color: #b91c1c !important;
+  color: white !important;
+}
+
+/* Available/Future appointment events (blue) */
+.rbc-event.available-appointment {
+  background-color: #2563eb !important;
+  border-color: #1d4ed8 !important;
+  color: white !important;
+}
+
+/* Today's appointments (green) */
+.rbc-event.today-appointment {
+  background-color: #059669 !important;
+  border-color: #047857 !important;
+  color: white !important;
+}
+
+/* Selected event styling */
+.rbc-event.rbc-selected {
+  background-color: #7c3aed !important;
+  border-color: #6d28d9 !important;
+}
+
+/* Calendar header styling */
+.rbc-header {
+  background-color: #f8fafc !important;
+  border-bottom: 2px solid #e2e8f0 !important;
+  font-weight: 600 !important;
+  color: #374151 !important;
+  padding: 12px 8px !important;
+}
+
+/* Toolbar styling */
+.rbc-toolbar {
+  margin-bottom: 20px !important;
+  padding: 15px !important;
+  background: #f8fafc !important;
+  border-radius: 8px !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.rbc-toolbar-label {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  color: #1f2937 !important;
+}
+
+/* Today button styling */
+.rbc-btn-group {
+  display: flex !important;
+  gap: 4px !important;
+}
+
+.rbc-btn-group button {
+  background: #ffffff !important;
+  border: 1px solid #d1d5db !important;
+  color: #374151 !important;
+  font-weight: 500 !important;
+  padding: 8px 16px !important;
+  border-radius: 6px !important;
+  transition: all 0.2s ease !important;
+}
+
+.rbc-btn-group button:hover {
+  background: #f3f4f6 !important;
+  border-color: #9ca3af !important;
+}
+
+.rbc-btn-group button.rbc-active {
+  background: #3b82f6 !important;
+  color: white !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Time gutter styling */
+.rbc-time-gutter {
+  background-color: #f9fafb !important;
+  border-right: 2px solid #e5e7eb !important;
+}
+
+.rbc-time-gutter .rbc-time-slot {
+  color: #6b7280 !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+}
+
+/* Current time indicator */
+.rbc-current-time-indicator {
+  background-color: #ef4444 !important;
+  height: 2px !important;
+  z-index: 10 !important;
+}
+
+/* Weekend styling */
+.rbc-off-range-bg {
+  background-color: #f3f4f6 !important;
+}
+
+/* All-day event area */
+.rbc-allday-cell {
+  background-color: #f8fafc !important;
+}
+
+/* Month view specific styles */
+.rbc-month-view .rbc-date-cell {
+  padding: 8px 4px !important;
+}
+
+.rbc-month-view .rbc-event {
+  font-size: 11px !important;
+  margin: 1px 2px !important;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .rbc-calendar {
+    background-color: #1f2937 !important;
+    color: #f9fafb !important;
+  }
+  
+  .rbc-toolbar {
+    background-color: #374151 !important;
+    border-color: #4b5563 !important;
+  }
+  
+  .rbc-toolbar-label {
+    color: #f9fafb !important;
+  }
+  
+  .rbc-btn-group button {
+    background: #4b5563 !important;
+    border-color: #6b7280 !important;
+    color: #f9fafb !important;
+  }
+  
+  .rbc-btn-group button:hover {
+    background: #6b7280 !important;
+  }
+  
+  .rbc-header {
+    background-color: #374151 !important;
+    color: #f9fafb !important;
+    border-bottom-color: #4b5563 !important;
+  }
+  
+  .rbc-time-gutter {
+    background-color: #374151 !important;
+    border-right-color: #4b5563 !important;
+  }
+  
+  .rbc-time-slot {
+    border-bottom-color: #4b5563 !important;
+  }
+  
+  .rbc-day-slot .rbc-time-slot:nth-child(n+17):nth-child(-n+38) {
+    background-color: #374151 !important;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .rbc-calendar {
+    font-size: 12px !important;
+  }
+  
+  .rbc-event {
+    font-size: 10px !important;
+    padding: 1px 4px !important;
+  }
+  
+  .rbc-header {
+    padding: 8px 4px !important;
+  }
+}
