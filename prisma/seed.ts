@@ -11,12 +11,25 @@ async function main() {
     create: { name: "Demo Klinik", slug: "default" },
   });
 
-  // Admin
+  // Admin (default local)
   const admin = await prisma.user.upsert({
     where: { email: "admin@clinic.local" },
     update: {},
     create: {
       email: "admin@clinic.local",
+      name: "Admin",
+      role: "ADMIN",
+      clinicId: clinic.id,
+      passwordHash: await hash("admin123", 10),
+    },
+  });
+
+  // Additional Admin (as requested)
+  await prisma.user.upsert({
+    where: { email: "admin@clinic.com" },
+    update: {},
+    create: {
+      email: "admin@clinic.com",
       name: "Admin",
       role: "ADMIN",
       clinicId: clinic.id,
