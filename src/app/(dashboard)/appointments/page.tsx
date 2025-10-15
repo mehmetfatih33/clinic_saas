@@ -13,7 +13,7 @@ import AddAppointmentModal from "@/components/ui/AddAppointmentModal";
 import StepAppointmentModal from "@/components/ui/StepAppointmentModal";
 
 // Set Turkish locale for moment
-moment.locale('tr');
+moment.locale("tr");
 const localizer = momentLocalizer(moment);
 
 export default function AppointmentCalendar() {
@@ -21,7 +21,7 @@ export default function AppointmentCalendar() {
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showStepModal, setShowStepModal] = useState(false);
-  const [currentView, setCurrentView] = useState<View>('month');
+  const [currentView, setCurrentView] = useState<View>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
   const queryClient = useQueryClient();
 
@@ -185,8 +185,8 @@ export default function AppointmentCalendar() {
           <div className="space-y-1">
             <h2 className="text-xl font-semibold">🗓️ Randevu Takvimi</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Görünüm: {currentView === 'month' ? 'Aylık' : currentView === 'week' ? 'Haftalık' : 'Günlük'} • 
-              {moment(currentDate).format('MMMM YYYY')}
+              Görünüm: {currentView === "month" ? "Aylık" : currentView === "week" ? "Haftalık" : "Günlük"} •{" "}
+              {moment(currentDate).format("MMMM YYYY")}
             </p>
           </div>
           {canCreateAppointment && (
@@ -194,9 +194,7 @@ export default function AppointmentCalendar() {
               <Button variant="outline" onClick={() => setShowAddModal(true)}>
                 Hızlı Randevu
               </Button>
-              <Button onClick={() => setShowStepModal(true)}>
-                + Aşamalı Randevu
-              </Button>
+              <Button onClick={() => setShowStepModal(true)}>+ Aşamalı Randevu</Button>
             </div>
           )}
         </CardHeader>
@@ -235,18 +233,18 @@ export default function AppointmentCalendar() {
               view={currentView}
               date={currentDate}
               onView={(view) => {
-                console.log('View changed to:', view);
+                console.log("View changed to:", view);
                 setCurrentView(view);
               }}
               onNavigate={(date, view) => {
-                console.log('Date navigated to:', date, 'View:', view);
+                console.log("Date navigated to:", date, "View:", view);
                 setCurrentDate(date);
                 if (view) setCurrentView(view);
               }}
-              views={['month', 'week', 'day']}
-              defaultView={'month'}
-              min={moment('08:00', 'HH:mm').toDate()}
-              max={moment('19:00', 'HH:mm').toDate()}
+              views={["month", "week", "day"]}
+              defaultView={"month"}
+              min={moment("08:00", "HH:mm").toDate()}
+              max={moment("19:00", "HH:mm").toDate()}
               step={60}
               timeslots={1}
               eventPropGetter={eventStyleGetter}
@@ -270,11 +268,11 @@ export default function AppointmentCalendar() {
                 allDay: "Tüm Gün",
                 work_week: "İş Haftası",
                 yesterday: "Dün",
-                tomorrow: "Yarın"
+                tomorrow: "Yarın",
               }}
               formats={{
                 timeGutterFormat: "HH:00",
-                eventTimeRangeFormat: ({ start, end }) => 
+                eventTimeRangeFormat: ({ start, end }) =>
                   `${moment(start).format("HH:mm")} - ${moment(end).format("HH:mm")}`,
                 dayFormat: "DD MMM",
                 weekdayFormat: "dddd",
@@ -289,7 +287,7 @@ export default function AppointmentCalendar() {
                 agendaDateFormat: "DD MMM",
                 agendaTimeFormat: "HH:mm",
                 agendaTimeRangeFormat: ({ start, end }) =>
-                  `${moment(start).format("HH:mm")} - ${moment(end).format("HH:mm")}`
+                  `${moment(start).format("HH:mm")} - ${moment(end).format("HH:mm")}`,
               }}
             />
           </>
