@@ -88,3 +88,75 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ message: "Server Error" }, { status: 500 });
   }
 }
+
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check role permissions
+    if (session.user.role !== "ADMIN" && session.user.role !== "ASISTAN") {
+      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+    }
+
+    // Await params for Next.js 15+
+    const { id } = await params;
+    const body = await req.json();
+
+    // Verify specialist belongs to same clinic
+    const specialist = await prisma.user.findUnique({
+      where: {
+        id,
+        clinicId: session.user.clinicId,
+      },
+      include: {
+        specialist: true,
+      },
+    });
+
+    if (!specialist || !specialist.specialist) {
+      return NextResponse.json({ message: "Uzman bulunamadı" }, { status: 404 });
+    }
+
+    // Prepare update data
+    const updateData: any = {};
+    
+    if (body.hourlyFee !== undefined) {
+      updateData.hourlyFee = Number(body.hourlyFee);
+    }
+    
+    if (body.defaultShare !== undefined) {
+      updateData.defaultShare = Number(body.defaultShare);
+    }
+
+    if (body.branch !== undefined) {
+      updateData.branch = body.branch;
+    }
+
+    if (body.bio !== undefined) {
+      updateData.bio = body.bio;
+    }
+
+    // Update specialist profile
+    const updatedProfile = await prisma.specialistProfile.update({
+      where: {
+        id: specialist.specialist.id,
+      },
+      data: updateData,
+    });
+
+    return NextResponse.json({
+      success: true,
+      specialist: {
+        ...specialist,
+        specialist: updatedProfile,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Uzman güncellenemedi:", error);
+    return NextResponse.json({ message: "Güncelleme başarısız" }, { status: 500 });
+  }
+}
