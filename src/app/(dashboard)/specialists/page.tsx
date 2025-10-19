@@ -157,6 +157,7 @@ function EditableField({
 }
 
 export default function SpecialistsPage() {
+  const { data: session } = useSession();
   const { data, refetch, isLoading } = useQuery<Specialist[]>({
     queryKey: ["specialists"],
     queryFn: async () => {
@@ -164,6 +165,8 @@ export default function SpecialistsPage() {
       return res.json();
     },
   });
+
+  const isAdmin = session?.user?.role === "ADMIN";
 
   return (
     <ToastProvider>
@@ -234,17 +237,19 @@ export default function SpecialistsPage() {
                           {specialist.specialist?.totalPatients || 0}
                         </p>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Toplam Gelir
-                        </p>
-                        <p className="font-medium">
-                          {(
-                            specialist.specialist?.totalRevenue || 0
-                          ).toLocaleString("tr-TR")}{" "}
-                          ₺
-                        </p>
-                      </div>
+                      {isAdmin && (
+                        <div>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Toplam Gelir
+                          </p>
+                          <p className="font-medium">
+                            {(
+                              specialist.specialist?.totalRevenue || 0
+                            ).toLocaleString("tr-TR")}{" "}
+                            ₺
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     {specialist.specialist?.bio && (
