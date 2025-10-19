@@ -1,11 +1,12 @@
 "use client";
-import { useState } from "react";
+import React, { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/ToastProvider";
+import { useSession } from "next-auth/react";
 
 interface AddAppointmentModalProps {
   open: boolean;
@@ -13,6 +14,7 @@ interface AddAppointmentModalProps {
 }
 
 export default function AddAppointmentModal({ open, onClose }: AddAppointmentModalProps) {
+  const { data: session } = useSession();
   const [form, setForm] = useState({
     patientId: "",
     specialistId: "",
@@ -45,6 +47,13 @@ export default function AddAppointmentModal({ open, onClose }: AddAppointmentMod
     },
     enabled: open,
   });
+
+  // Uzmanlar için specialistId'yi otomatik ayarla
+  React.useEffect(() => {
+    if (session?.user?.role === "UZMAN" && session?.user?.id) {
+      setForm(prev => ({ ...prev, specialistId: session.user.id }));
+    }
+  }, [session]);
 
   const createAppointment = useMutation({
     mutationFn: async () => {
@@ -108,26 +117,38 @@ export default function AddAppointmentModal({ open, onClose }: AddAppointmentMod
             </Select>
           </div>
 
-          {/* Specialist Selection */}
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-900 dark:text-gray-100">Uzman</label>
-            <Select value={form.specialistId} onValueChange={(value) => setForm({ ...form, specialistId: value })}>
-              <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
-                <SelectValue placeholder="Uzman seçin" className="text-gray-900 dark:text-white" />
-              </SelectTrigger>
-              <SelectContent className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
-                {specialists.map((specialist: any) => (
-                  <SelectItem 
-                    key={specialist.id} 
-                    value={specialist.id}
-                    className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600"
-                  >
-                    {specialist.name} {specialist.specialist?.branch && `(${specialist.specialist.branch})`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Specialist Selection - Sadece Admin ve Asistan görebilir */}
+          {session?.user?.role !== "UZMAN" && (
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-gray-900 dark:text-gray-100">Uzman</label>
+              <Select value={form.specialistId} onValueChange={(value) => setForm({ ...form, specialistId: value })}>
+                <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
+                  <SelectValue placeholder="Uzman seçin" className="text-gray-900 dark:text-white" />
+                </SelectTrigger>
+                <SelectContent className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
+                  {specialists.map((specialist: any) => (
+                    <SelectItem 
+                      key={specialist.id} 
+                      value={specialist.id}
+                      className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600"
+                    >
+                      {specialist.name} {specialist.specialist?.branch && `(${specialist.specialist.branch})`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Uzmanlar için bilgi mesajı */}
+          {session?.user?.role === "UZMAN" && (
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-gray-900 dark:text-gray-100">Uzman</label>
+              <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800 text-sm">
+                <p className="text-blue-800 dark:text-blue-200">Kendi randevunuzu oluşturuyorsunuz</p>
+              </div>
+            </div>
+          )}
 
           {/* Date & Time */}
           <div className="space-y-1">
