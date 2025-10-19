@@ -66,12 +66,12 @@ export default function StepAppointmentModal({ open, onClose }: StepAppointmentM
   // Handle time slot selection
   const handleTimeSelect = (time: string) => {
     if (!form.selectedDate) {
-      showToast("Önce tarih seçin", "error");
+      showToast("Lütfen önce tarih seçin", "error");
       return;
     }
     
     if (!isTimeSlotAvailable(time)) {
-      showToast("Bu saat dolu", "error");
+      showToast("Seçilen saat dolu. Lütfen farklı bir saat seçin.", "error");
       return;
     }
     
@@ -149,14 +149,14 @@ export default function StepAppointmentModal({ open, onClose }: StepAppointmentM
       showToast("✅ Randevu başarıyla oluşturuldu", "success");
     },
     onError: (error: any) => {
-      showToast(error.message || "❌ Randevu oluşturulamadı", "error");
+      showToast(error.message || "Randevu oluşturulurken bir hata oluştu. Lütfen tekrar deneyin. ❌", "error");
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.patientId || !form.specialistId || !form.date || !form.selectedTime) {
-      showToast("Tüm bilgiler doldurulmalıdır", "error");
+      showToast("Tüm bilgiler doldurulmalıdır. Lütfen eksik alanları tamamlayın.", "error");
       return;
     }
     createAppointment.mutate();
@@ -164,11 +164,11 @@ export default function StepAppointmentModal({ open, onClose }: StepAppointmentM
 
   const nextStep = () => {
     if (currentStep === 1 && !form.patientId) {
-      showToast("Hasta seçimi zorunludur", "error");
+      showToast("Hasta seçimi zorunludur. Lütfen bir hasta seçin.", "error");
       return;
     }
     if (currentStep === 2 && !form.specialistId) {
-      showToast("Uzman seçimi zorunludur", "error");
+      showToast("Uzman seçimi zorunludur. Lütfen bir uzman seçin.", "error");
       return;
     }
     if (currentStep < 3) {
