@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     console.log("📅 Appointment creation request:", { patientId, specialistId, date, duration, notes });
 
     if (!patientId || !specialistId || !date) {
-      return NextResponse.json({ message: "Eksik veri" }, { status: 400 });
+      return NextResponse.json({ message: "Eksik bilgi. Lütfen tüm alanları doldurun." }, { status: 400 });
     }
 
     const appointment = await prisma.appointment.create({
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     return NextResponse.json(appointment);
   } catch (error: any) {
     console.error("❌ Appointment Create Error:", error);
-    return NextResponse.json({ message: "Server Error", error: error.message }, { status: 500 });
+    return NextResponse.json({ message: "Randevu oluşturulurken bir hata oluştu. Lütfen tekrar deneyin." }, { status: 500 });
   }
 }
 
@@ -74,6 +74,6 @@ export async function GET(req: Request) {
     return NextResponse.json(appointments);
   } catch (error: any) {
     console.error("❌ Appointment Fetch Error:", error);
-    return NextResponse.json({ message: "Server Error" }, { status: 500 });
+    return NextResponse.json({ message: "Randevular yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin." }, { status: 500 });
   }
 }
