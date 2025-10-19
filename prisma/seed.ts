@@ -4,6 +4,22 @@ import { hash } from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
+  // Önce tüm kullanıcıları temizle
+  console.log("🧹 Mevcut kullanıcılar temizleniyor...");
+  await prisma.user.deleteMany({});
+  await prisma.specialistProfile.deleteMany({});
+  await prisma.patient.deleteMany({});
+  await prisma.assignment.deleteMany({});
+  await prisma.appointment.deleteMany({});
+  await prisma.note.deleteMany({});
+  await prisma.payment.deleteMany({});
+  await prisma.feeSchedule.deleteMany({});
+  await prisma.specialistFee.deleteMany({});
+  await prisma.auditLog.deleteMany({});
+  await prisma.account.deleteMany({});
+  await prisma.session.deleteMany({});
+  await prisma.verificationToken.deleteMany({});
+
   // Klinik
   const clinic = await prisma.clinic.upsert({
     where: { slug: "default" },
@@ -11,11 +27,10 @@ async function main() {
     create: { name: "Demo Klinik", slug: "default" },
   });
 
-  // Admin (default local)
-  const admin = await prisma.user.upsert({
-    where: { email: "admin@klinik.com" },
-    update: {},
-    create: {
+  console.log("👤 Admin kullanıcısı oluşturuluyor...");
+  // Admin kullanıcısı
+  const admin = await prisma.user.create({
+    data: {
       email: "admin@klinik.com",
       name: "Admin",
       role: "ADMIN",
@@ -24,49 +39,10 @@ async function main() {
     },
   });
 
-  // Additional Admin (as requested)
-  await prisma.user.upsert({
-    where: { email: "admin@clinic.local" },
-    update: {},
-    create: {
-      email: "admin@clinic.local",
-      name: "Admin",
-      role: "ADMIN",
-      clinicId: clinic.id,
-      passwordHash: await hash("admin123", 10),
-    },
-  });
-
-  // Uzman
-  const uzman = await prisma.user.upsert({
-    where: { email: "uzman@klinik.com" },
-    update: {},
-    create: {
-      email: "uzman@klinik.com",
-      name: "Uzm. Psikolog X",
-      role: "UZMAN",
-      clinicId: clinic.id,
-      passwordHash: await hash("uzman123", 10),
-    },
-  });
-
-  // SpecialistProfile for uzman
-  const specialistProfile = await prisma.specialistProfile.upsert({
-    where: { userId: uzman.id },
-    update: {},
-    create: {
-      userId: uzman.id,
-      clinicId: clinic.id,
-      branch: "Klinik Psikoloji",
-      bio: "Uzman profili"
-    },
-  });
-
-  // Asistan (default local)
-  await prisma.user.upsert({
-    where: { email: "asistan@klinik.com" },
-    update: {},
-    create: {
+  console.log("👤 Asistan kullanıcısı oluşturuluyor...");
+  // Asistan kullanıcısı
+  const asistan = await prisma.user.create({
+    data: {
       email: "asistan@klinik.com",
       name: "Asistan",
       role: "ASISTAN",
@@ -75,48 +51,17 @@ async function main() {
     },
   });
 
-  // Additional Asistan (as requested)
-  await prisma.user.upsert({
-    where: { email: "asistan@clinic.local" },
-    update: {},
-    create: {
-      email: "asistan@clinic.local",
-      name: "Asistan",
-      role: "ASISTAN",
-      clinicId: clinic.id,
-      passwordHash: await hash("asistan123", 10),
-    },
-  });
-
+  console.log("💰 Temel ücret tarifesi oluşturuluyor...");
   // Master ücret
-  const bireysel = await prisma.feeSchedule.upsert({
-    where: { clinicId_title: { clinicId: clinic.id, title: "Bireysel Seans" } },
-    update: {},
-    create: { clinicId: clinic.id, title: "Bireysel Seans", amount: 150000, createdBy: admin.id },
+  const bireysel = await prisma.feeSchedule.create({
+    data: { clinicId: clinic.id, title: "Bireysel Seans", amount: 150000, createdBy: admin.id },
   });
 
-  // Uzman override (1400₺, 45/55)
-  await prisma.specialistFee.upsert({
-    where: { specialistId_feeId: { specialistId: specialistProfile.id, feeId: bireysel.id } },
-    update: { customAmount: 140000, splitClinic: 45, splitDoctor: 55, clinicId: clinic.id },
-    create: { specialistId: specialistProfile.id, feeId: bireysel.id, customAmount: 140000, splitClinic: 45, splitDoctor: 55, clinicId: clinic.id },
-  });
-
-  // Hasta + atama
-  const patient = await prisma.patient.create({
-    data: { 
-      clinicId: clinic.id, 
-      name: "Ayşe Yılmaz", 
-      phone: "5551112233", 
-      assignedToId: uzman.id, 
-      specialistShare: 55.0
-    },
-  });
-  const asg = await prisma.assignment.create({
-    data: { clinicId: clinic.id, patientId: patient.id, specialistId: uzman.id, feeId: bireysel.id }
-  });
-
-  console.log({ clinic: clinic.slug, admin: admin.email, uzman: uzman.email, assignment: asg.id });
+  console.log("✅ Seed işlemi tamamlandı!");
+  console.log("📋 Oluşturulan kullanıcılar:");
+  console.log(`   👑 Admin: ${admin.email} / admin123`);
+  console.log(`   👤 Asistan: ${asistan.email} / asistan123`);
+  console.log(`   🏥 Klinik: ${clinic.name} (${clinic.slug})`);
 }
 
 main().catch(e => { console.error(e); process.exit(1); }).finally(async () => { await prisma.$disconnect(); });
