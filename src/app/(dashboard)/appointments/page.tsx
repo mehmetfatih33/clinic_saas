@@ -159,7 +159,7 @@ export default function AppointmentCalendar() {
       });
       
       if (!res.ok) {
-        throw new Error('Randevu durumu güncellenemedi');
+        throw new Error('Randevu durumu güncellenirken bir hata oluştu. Lütfen tekrar deneyin.');
       }
       
       return res.json();
@@ -169,7 +169,7 @@ export default function AppointmentCalendar() {
       setSelectedEvent(null);
     },
     onError: (error: any) => {
-      alert(error.message || 'Hata oluştu');
+      alert(error.message || 'İşlem sırasında bir hata oluştu. Lütfen tekrar deneyin.');
     },
   });
 
