@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import React, { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/ToastProvider";
 import { ArrowLeft, ArrowRight, User, Calendar, Clock } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 interface StepAppointmentModalProps {
   open: boolean;
@@ -14,6 +15,7 @@ interface StepAppointmentModalProps {
 }
 
 export default function StepAppointmentModal({ open, onClose }: StepAppointmentModalProps) {
+  const { data: session } = useSession();
   const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState({
     patientId: "",
@@ -49,6 +51,13 @@ export default function StepAppointmentModal({ open, onClose }: StepAppointmentM
   
   const { show: showToast } = useToast();
   const qc = useQueryClient();
+
+  // Uzmanlar için specialistId'yi otomatik ayarla
+  React.useEffect(() => {
+    if (session?.user?.role === "UZMAN" && session?.user?.id) {
+      setForm(prev => ({ ...prev, specialistId: session.user.id }));
+    }
+  }, [session]);
 
   // Check if time slot is available
   const isTimeSlotAvailable = (time: string) => {
@@ -311,6 +320,12 @@ export default function StepAppointmentModal({ open, onClose }: StepAppointmentM
                         ✅ Otomatik Seçildi
                       </div>
                     </div>
+                  </div>
+                ) : session?.user?.role === "UZMAN" ? (
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+                    <p className="text-blue-800 dark:text-blue-200 text-sm">
+                      Kendi randevunuzu oluşturuyorsunuz
+                    </p>
                   </div>
                 ) : (
                   <Select value={form.specialistId} onValueChange={(value) => setForm({ ...form, specialistId: value })}>
