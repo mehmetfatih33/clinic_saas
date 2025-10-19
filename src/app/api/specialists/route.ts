@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ message: "Yetkisiz erişim" }, { status: 401 });
     }
 
     const data = await req.json();
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
     });
     if (existing) {
       console.log("❌ Email already exists:", data.email);
-      return NextResponse.json({ message: "Bu e-posta zaten kayıtlı.", error: "Email exists" }, { status: 400 });
+      return NextResponse.json({ message: "Bu e-posta adresi zaten kayıtlı. Lütfen farklı bir e-posta adresi kullanın." }, { status: 400 });
     }
 
     // Uzman oluştur
@@ -92,10 +92,7 @@ export async function POST(req: Request) {
     });
     return NextResponse.json(
       { 
-        message: "Uzman kaydedilemedi", 
-        error: String(err?.message || err), 
-        code: err?.code || null, 
-        meta: err?.meta || null 
+        message: "Uzman kaydedilirken bir hata oluştu. Lütfen tekrar deneyin."
       },
       { status: 500 }
     );
