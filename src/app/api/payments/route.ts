@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     
     if (!patientId || !amount || amount <= 0) {
       return NextResponse.json(
-        { message: "Hasta ID ve geçerli bir ödeme tutarı gerekli" },
+        { message: "Hasta seçimi ve geçerli bir ödeme tutarı gerekli. Lütfen gerekli alanları doldurun." },
         { status: 400 }
       );
     }
@@ -30,14 +30,14 @@ export async function POST(req: Request) {
 
     if (!patient) {
       return NextResponse.json(
-        { message: "Hasta bulunamadı" },
+        { message: "Seçilen hasta bulunamadı. Lütfen geçerli bir hasta seçin." },
         { status: 404 }
       );
     }
 
     if (!patient.assignedToId) {
       return NextResponse.json(
-        { message: "Hasta henüz bir uzmana atanmamış" },
+        { message: "Hasta henüz bir uzmana atanmamış. Lütfen önce hastayı bir uzmana atayın." },
         { status: 400 }
       );
     }
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("💥 Payment Error:", error);
     return NextResponse.json(
-      { message: "Ödeme kaydedilirken hata oluştu" },
+      { message: "Ödeme kaydedilirken bir hata oluştu. Lütfen tekrar deneyin." },
       { status: 500 }
     );
   }
@@ -130,7 +130,7 @@ export async function GET(req: Request) {
   } catch (error) {
     console.error("💥 Get Payments Error:", error);
     return NextResponse.json(
-      { message: "Ödemeler yüklenirken hata oluştu" },
+      { message: "Ödemeler yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin." },
       { status: 500 }
     );
   }
