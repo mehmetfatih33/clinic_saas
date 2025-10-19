@@ -30,6 +30,6 @@ export async function GET() {
     return NextResponse.json(payments);
   } catch (err) {
     console.error("💥 Payment list error:", err);
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    return NextResponse.json({ message: "Ödeme listesi yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin." }, { status: 500 });
   }
 }
