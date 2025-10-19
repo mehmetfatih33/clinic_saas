@@ -15,7 +15,11 @@ export default function LoginPage() {
     const res = await signIn("credentials", { email, password, redirect: false });
     setLoading(false);
     if (res?.ok) r.push("/dashboard");
-    else alert("Giriş başarısız");
+    else {
+      // Backend'den gelen hata mesajını göster
+      const errorMessage = res?.error || "Giriş başarısız";
+      alert(errorMessage);
+    }
   };
 
   return (
