@@ -16,7 +16,7 @@ export async function GET(
     const session = await getServerSession(authOptions);
     
     if (!session?.user) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ message: "Yetkisiz erişim" }, { status: 401 });
     }
 
     const patient = await prisma.patient.findUnique({
@@ -35,7 +35,7 @@ export async function GET(
 
     if (!patient) {
       return NextResponse.json(
-        { message: "Hasta bulunamadı" },
+        { message: "Hasta bulunamadı. Lütfen geçerli bir hasta seçin." },
         { status: 404 }
       );
     }
@@ -44,7 +44,7 @@ export async function GET(
   } catch (error) {
     console.error("❌ Hasta detay hatası:", error);
     return NextResponse.json(
-      { message: "Sunucu hatası", error: String(error) },
+      { message: "Hasta bilgileri yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin." },
       { status: 500 }
     );
   }
@@ -63,12 +63,12 @@ export async function PATCH(
     const session = await getServerSession(authOptions);
     
     if (!session?.user) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ message: "Yetkisiz erişim" }, { status: 401 });
     }
 
     // Sadece ADMIN ve ASISTAN düzenleyebilir
     if (!["ADMIN", "ASISTAN"].includes(session.user.role)) {
-      return NextResponse.json({ message: "Bu işlem için yetkiniz yok" }, { status: 403 });
+      return NextResponse.json({ message: "Bu işlem için yetkiniz yok. Sadece yönetici ve asistanlar hastayı düzenleyebilir." }, { status: 403 });
     }
 
     const data = await req.json();
@@ -131,7 +131,7 @@ export async function PATCH(
   } catch (error) {
     console.error("❌ Hasta güncelleme hatası:", error);
     return NextResponse.json(
-      { message: "Hasta güncellenemedi", error: String(error) },
+      { message: "Hasta bilgileri güncellenirken bir hata oluştu. Lütfen tekrar deneyin." },
       { status: 500 }
     );
   }
