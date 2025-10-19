@@ -60,7 +60,7 @@ export default function AddAssignmentModal({ onAdded }: { onAdded: () => void })
 
   const onSubmit = async (data: FormData) => {
     if (data.splitClinic + data.splitDoctor !== 100) {
-      show("Klinik ve uzman payları toplamı 100 olmalıdır ❌", "error");
+      show("Klinik ve uzman payları toplamı 100 olmalıdır. Lütfen değerleri kontrol edin. ❌", "error");
       return;
     }
 
@@ -82,7 +82,7 @@ export default function AddAssignmentModal({ onAdded }: { onAdded: () => void })
       setOpen(false);
       onAdded();
     } catch (error: any) {
-      show(error.message || "Bir hata oluştu ❌", "error");
+      show(error.message || "Atama oluşturulurken bir hata oluştu. Lütfen tekrar deneyin. ❌", "error");
     } finally {
       setLoading(false);
     }
