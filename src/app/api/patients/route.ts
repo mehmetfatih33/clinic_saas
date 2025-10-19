@@ -8,7 +8,7 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ message: 'Yetkisiz erişim' }, { status: 401 });
     }
 
     const userRole = session.user.role;
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return NextResponse.json({ message: "Yetkisiz erişim" }, { status: 401 });
+      return NextResponse.json({ message: "Yetkisiz erişim. Lütfen giriş yapın." }, { status: 401 });
     }
 
     const data = await req.json();
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     // Gerekli alanları kontrol et
     if (!data.name || !data.assignedToId) {
       return NextResponse.json(
-        { message: "Hasta adı ve uzman seçimi zorunludur." },
+        { message: "Hasta adı ve uzmana atama zorunludur. Lütfen gerekli alanları doldurun." },
         { status: 400 }
       );
     }
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("❌ Hasta oluşturulurken hata:", error);
     return NextResponse.json(
-      { message: "Hasta kaydedilemedi", error: String(error) },
+      { message: "Hasta kaydedilirken bir hata oluştu. Lütfen tekrar deneyin." },
       { status: 500 }
     );
   }
