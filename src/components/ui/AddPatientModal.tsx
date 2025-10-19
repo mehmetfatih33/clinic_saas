@@ -34,7 +34,7 @@ export default function AddPatientModal({ onAdded }: { onAdded: () => void }) {
       setOpen(false);
       onAdded();
     } catch {
-      show("Bir hata oluştu ❌", "error");
+      show("Hasta eklenirken bir hata oluştu. Lütfen tekrar deneyin. ❌", "error");
     } finally {
       setLoading(false);
     }
