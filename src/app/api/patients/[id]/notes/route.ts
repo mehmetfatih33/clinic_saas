@@ -36,6 +36,6 @@ export async function GET(
     return NextResponse.json(notes);
   } catch (err) {
     console.error("❌ Note Fetch Error:", err);
-    return NextResponse.json({ message: "Server Error" }, { status: 500 });
+    return NextResponse.json({ message: "Notlar yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin." }, { status: 500 });
   }
 }
