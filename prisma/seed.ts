@@ -13,6 +13,19 @@ async function main() {
 
   // Admin (default local)
   const admin = await prisma.user.upsert({
+    where: { email: "admin@klinik.com" },
+    update: {},
+    create: {
+      email: "admin@klinik.com",
+      name: "Admin",
+      role: "ADMIN",
+      clinicId: clinic.id,
+      passwordHash: await hash("admin123", 10),
+    },
+  });
+
+  // Additional Admin (as requested)
+  await prisma.user.upsert({
     where: { email: "admin@clinic.local" },
     update: {},
     create: {
@@ -24,25 +37,12 @@ async function main() {
     },
   });
 
-  // Additional Admin (as requested)
-  await prisma.user.upsert({
-    where: { email: "admin@clinic.com" },
-    update: {},
-    create: {
-      email: "admin@clinic.com",
-      name: "Admin",
-      role: "ADMIN",
-      clinicId: clinic.id,
-      passwordHash: await hash("admin123", 10),
-    },
-  });
-
   // Uzman
   const uzman = await prisma.user.upsert({
-    where: { email: "uzman@clinic.local" },
+    where: { email: "uzman@klinik.com" },
     update: {},
     create: {
-      email: "uzman@clinic.local",
+      email: "uzman@klinik.com",
       name: "Uzm. Psikolog X",
       role: "UZMAN",
       clinicId: clinic.id,
@@ -64,10 +64,10 @@ async function main() {
 
   // Asistan (default local)
   await prisma.user.upsert({
-    where: { email: "asistan@clinic.local" },
+    where: { email: "asistan@klinik.com" },
     update: {},
     create: {
-      email: "asistan@clinic.local",
+      email: "asistan@klinik.com",
       name: "Asistan",
       role: "ASISTAN",
       clinicId: clinic.id,
@@ -77,10 +77,10 @@ async function main() {
 
   // Additional Asistan (as requested)
   await prisma.user.upsert({
-    where: { email: "asistan@clinic.com" },
+    where: { email: "asistan@clinic.local" },
     update: {},
     create: {
-      email: "asistan@clinic.com",
+      email: "asistan@clinic.local",
       name: "Asistan",
       role: "ASISTAN",
       clinicId: clinic.id,
