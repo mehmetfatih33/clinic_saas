@@ -66,7 +66,7 @@ export default function AddAppointmentModal({ open, onClose }: AddAppointmentMod
       showToast("✅ Randevu başarıyla oluşturuldu", "success");
     },
     onError: (error: any) => {
-      showToast(error.message || "❌ Randevu oluşturulamadı", "error");
+      showToast(error.message || "Randevu oluşturulurken bir hata oluştu. Lütfen tekrar deneyin. ❌", "error");
     },
   });
 
