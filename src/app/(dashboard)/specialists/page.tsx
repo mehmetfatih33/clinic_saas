@@ -76,7 +76,7 @@ function EditableField({
     },
     onError: (error: any) => {
       console.error("💥 updateMutation hata:", error);
-      showToast(error.message || "Güncelleme sırasında hata oluştu", "error");
+      showToast(error.message || "Güncelleme sırasında bir hata oluştu. Lütfen tekrar deneyin.", "error");
       setEditValue(value);
     },
   });
