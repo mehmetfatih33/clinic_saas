@@ -17,7 +17,7 @@ export function Sidebar() {
     { name: "Panel", href: "/dashboard", icon: BarChart3, roles: ["ADMIN", "ASISTAN", "UZMAN"] },
     { name: "Hastalar", href: "/patients", icon: Users, roles: ["ADMIN", "ASISTAN", "UZMAN"] },
     { name: "Randevular", href: "/appointments", icon: Calendar, roles: ["ADMIN", "ASISTAN", "UZMAN"] },
-    { name: "Uzmanlar", href: "/specialists", icon: ClipboardList, roles: ["ADMIN"] },
+    { name: "Uzmanlar", href: "/specialists", icon: ClipboardList, roles: ["ADMIN", "ASISTAN"] },
     { name: "Atamalar", href: "/assignments", icon: FileText, roles: ["ADMIN"] },
     { name: "Ödemeler", href: "/payments", icon: CreditCard, roles: ["ADMIN", "ASISTAN", "UZMAN"] },
     { name: "Klinikler", href: "/clinics", icon: Building2, roles: ["ADMIN"] },
