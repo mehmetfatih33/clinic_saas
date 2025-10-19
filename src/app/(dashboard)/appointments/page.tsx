@@ -34,8 +34,13 @@ export default function AppointmentCalendar() {
     },
   });
 
+  // Uzmanlar sadece kendi randevularını görebilir
+  const filteredData = session?.user?.role === "UZMAN" 
+    ? data?.filter((a: any) => a.specialistId === session.user.id) 
+    : data;
+
   const events =
-    data?.map((a: any) => ({
+    filteredData?.map((a: any) => ({
       id: a.id,
       title: `${a.patient.name} • ${a.specialist.name}`,
       start: new Date(a.date),
@@ -147,7 +152,7 @@ export default function AppointmentCalendar() {
   };
 
   const canManageAppointments = session?.user?.role === "ADMIN" || session?.user?.role === "ASISTAN" || session?.user?.role === "UZMAN";
-  const canCreateAppointment = session?.user?.role === "ADMIN" || session?.user?.role === "ASISTAN";
+  const canCreateAppointment = session?.user?.role === "ADMIN" || session?.user?.role === "ASISTAN" || session?.user?.role === "UZMAN";
 
   // Handle appointment status update with React Query
   const updateStatusMutation = useMutation({
