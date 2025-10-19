@@ -20,7 +20,7 @@ export default function PaymentsPage() {
     queryKey: ["payments"],
     queryFn: async () => {
       const res = await fetch("/api/payments/list");
-      if (!res.ok) throw new Error("Ödemeler yüklenemedi");
+      if (!res.ok) throw new Error("Ödemeler yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.");
       return res.json();
     },
   });
