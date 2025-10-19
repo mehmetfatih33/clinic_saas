@@ -44,7 +44,7 @@ export default function AddSpecialistModal({ onAdded }: { onAdded: () => void })
       setOpen(false);
       onAdded();
     } catch (error: any) {
-      show(error.message || "Bir hata oluştu ❌", "error");
+      show(error.message || "Uzman eklenirken bir hata oluştu. Lütfen tekrar deneyin. ❌", "error");
     } finally {
       setLoading(false);
     }
