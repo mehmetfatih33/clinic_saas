@@ -62,12 +62,25 @@ async function main() {
     },
   });
 
-  // Asistan
+  // Asistan (default local)
   await prisma.user.upsert({
     where: { email: "asistan@clinic.local" },
     update: {},
     create: {
       email: "asistan@clinic.local",
+      name: "Asistan",
+      role: "ASISTAN",
+      clinicId: clinic.id,
+      passwordHash: await hash("asistan123", 10),
+    },
+  });
+
+  // Additional Asistan (as requested)
+  await prisma.user.upsert({
+    where: { email: "asistan@clinic.com" },
+    update: {},
+    create: {
+      email: "asistan@clinic.com",
       name: "Asistan",
       role: "ASISTAN",
       clinicId: clinic.id,
