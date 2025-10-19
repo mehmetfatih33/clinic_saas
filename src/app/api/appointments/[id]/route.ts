@@ -30,6 +30,6 @@ export async function PATCH(
     return NextResponse.json(updated);
   } catch (error: any) {
     console.error("❌ Appointment Update Error:", error);
-    return NextResponse.json({ message: "Server Error", error: error.message }, { status: 500 });
+    return NextResponse.json({ message: "Randevu güncellenirken bir hata oluştu. Lütfen tekrar deneyin." }, { status: 500 });
   }
 }
