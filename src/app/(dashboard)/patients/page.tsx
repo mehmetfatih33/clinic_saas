@@ -18,7 +18,7 @@ export default function PatientsPage() {
     queryFn: async () => {
       const res = await fetch("/api/patients");
       if (!res.ok) {
-        throw new Error('Failed to fetch patients');
+        throw new Error('Hastalar yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.');
       }
       const result = await res.json();
       // Ensure we always return an array
