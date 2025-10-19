@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     console.log("👤 User session:", { id: session.user.id, role: session.user.role, clinicId: session.user.clinicId });
 
     if (!patientId || !content) {
-      return NextResponse.json({ message: "Eksik veri" }, { status: 400 });
+      return NextResponse.json({ message: "Eksik bilgi. Lütfen not içeriğini girin." }, { status: 400 });
     }
 
     // Check if user has access to this patient
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
       if (!patient) {
         return NextResponse.json(
-          { message: "Bu hastaya erişim yetkiniz yok" },
+          { message: "Bu hastaya erişim yetkiniz yok. Sadece atanmış uzmanlar not ekleyebilir." },
           { status: 403 }
         );
       }
@@ -53,6 +53,6 @@ export async function POST(req: Request) {
     console.error("❌ Note Create Error:", err);
     console.error("Error details:", err.message);
     console.error("Stack trace:", err.stack);
-    return NextResponse.json({ message: "Server Error", error: err.message }, { status: 500 });
+    return NextResponse.json({ message: "Not eklenirken bir hata oluştu. Lütfen tekrar deneyin." }, { status: 500 });
   }
 }
