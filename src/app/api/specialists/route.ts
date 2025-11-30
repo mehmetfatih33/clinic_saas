@@ -9,7 +9,8 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return NextResponse.json({ message: "Yetkisiz erişim" }, { status: 401 });
+      console.error("❌ specialists GET unauthorized session");
+      return NextResponse.json({ experts: [] }, { status: 401 });
     }
 
     const clinicId = session.user.clinicId;
@@ -44,10 +45,10 @@ export async function GET() {
       },
     }));
 
-    return NextResponse.json(data);
+    return NextResponse.json({ experts: Array.isArray(data) ? data : [] });
   } catch (error) {
     console.error("❌ Uzman listesi yüklenemedi:", error);
-    return NextResponse.json({ message: "Server Error" }, { status: 500 });
+    return NextResponse.json({ experts: [] }, { status: 500 });
   }
 }
 

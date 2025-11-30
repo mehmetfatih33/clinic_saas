@@ -157,11 +157,20 @@ function EditableField({
 }
 
 export default function SpecialistsPage() {
-  const { data, refetch, isLoading } = useQuery<Specialist[]>({
+  const { data, refetch, isLoading, error } = useQuery<any>({
     queryKey: ["specialists"],
     queryFn: async () => {
-      const res = await fetch("/api/specialists");
-      return res.json();
+      try {
+        const res = await fetch("/api/specialists");
+        const json = await res.json().catch(() => ({}));
+        const experts = Array.isArray(json)
+          ? json
+          : (Array.isArray(json?.experts) ? json.experts : []);
+        return { experts };
+      } catch (e) {
+        console.error("❌ specialists fetch error", e);
+        return { experts: [] };
+      }
     },
   });
 
@@ -177,11 +186,15 @@ export default function SpecialistsPage() {
           <AddSpecialistModal onAdded={refetch} />
         </div>
 
-        {isLoading ? (
+        {isLoading && (
           <p className="text-gray-500">Yükleniyor...</p>
-        ) : (
+        )}
+        {error && !isLoading && (
+          <p className="text-red-600">Uzmanlar yüklenemedi. Lütfen daha sonra tekrar deneyin.</p>
+        )}
+        {!isLoading && !error && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {data?.map((specialist: Specialist) => (
+            {(Array.isArray(data?.experts) ? data.experts : []).map((specialist: Specialist) => (
               <Card
                 key={specialist.id}
                 className="hover:shadow-lg transition-shadow group"
@@ -239,7 +252,7 @@ export default function SpecialistsPage() {
           </div>
         )}
 
-        {data?.length === 0 && !isLoading && (
+        {Array.isArray(data?.experts) && data?.experts.length === 0 && !isLoading && (
           <div className="text-center py-8 text-gray-500">
             Henüz uzman eklenmemiş. İlk uzmanı eklemek için &quot;+ Yeni Uzman&quot;
             butonunu kullanın.
