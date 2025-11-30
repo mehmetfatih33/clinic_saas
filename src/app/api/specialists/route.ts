@@ -7,9 +7,26 @@ import { hash } from "bcryptjs";
 // ✅ TÜM UZMANLARI GETİR
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ message: "Yetkisiz erişim" }, { status: 401 });
+    }
+
+    const clinicId = session.user.clinicId;
+
     const specialists = await prisma.user.findMany({
-      where: { role: "UZMAN" },
+      where: { role: "UZMAN", clinicId },
       include: { specialist: true },
+    });
+
+    const patientGroups = await prisma.patient.groupBy({
+      by: ["assignedToId"],
+      where: { clinicId },
+      _count: { _all: true },
+    });
+    const patientCountMap = new Map<string, number>();
+    patientGroups.forEach((g: any) => {
+      if (g.assignedToId) patientCountMap.set(g.assignedToId, g._count._all || 0);
     });
 
     const data = specialists.map((sp) => ({
@@ -21,7 +38,7 @@ export async function GET() {
         branch: sp.specialist?.branch ?? "Belirtilmemiş",
         defaultShare: sp.specialist?.defaultShare ?? 50,
         hourlyFee: (sp.specialist as any)?.hourlyFee ?? 0,
-        totalPatients: sp.specialist?.totalPatients ?? 0,
+        totalPatients: patientCountMap.get(sp.id) ?? 0,
         totalRevenue: sp.specialist?.totalRevenue ?? 0,
         bio: sp.specialist?.bio ?? "",
       },
@@ -45,8 +62,18 @@ export async function POST(req: Request) {
     const data = await req.json();
     console.log("📝 Received data:", data);
 
-    // Klinik ID belirle
-    const clinicId = session.user.clinicId || "cmgi34x7j0000ngtzwr7ishxn";
+    const sessionClinicId = session.user.clinicId;
+    let clinic = null as any;
+    if (sessionClinicId) {
+      clinic = await prisma.clinic.findUnique({ where: { id: sessionClinicId } });
+    }
+    if (!clinic) {
+      clinic = await prisma.clinic.findUnique({ where: { slug: "default" } });
+    }
+    if (!clinic) {
+      clinic = await prisma.clinic.create({ data: { name: "Demo Klinik", slug: "default" } });
+    }
+    const clinicId = clinic.id as string;
 
     // Aynı e-posta var mı kontrol et
     const existing = await prisma.user.findUnique({
@@ -57,11 +84,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Bu e-posta adresi zaten kayıtlı. Lütfen farklı bir e-posta adresi kullanın." }, { status: 400 });
     }
 
+    if (!data.name || !data.email || !data.phone) {
+      return NextResponse.json({ message: "Ad, e-posta ve telefon zorunludur." }, { status: 400 });
+    }
+
     // Uzman oluştur
     const user = await prisma.user.create({
       data: {
         email: data.email,
         name: data.name,
+        phone: data.phone,
+        address: data.address ?? null,
         role: "UZMAN",
         clinicId: clinicId,
         passwordHash: await hash(data.password || "123456", 10),

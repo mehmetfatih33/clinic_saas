@@ -5,7 +5,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-
 }
 
 model Clinic {
@@ -13,6 +12,7 @@ model Clinic {
   name               String
   slug               String              @unique
   createdAt          DateTime            @default(now())
+  workSchedule       Json?
   appointments       Appointment[]
   assignments        Assignment[]
   audits             AuditLog[]
@@ -23,6 +23,18 @@ model Clinic {
   specialistFees     SpecialistFee[]
   specialistProfiles SpecialistProfile[]
   users              User[]
+  assessments        Assessment[]
+  timeOffs           SpecialistTimeOff[]
+  transactions       Transaction[]
+  paymentPlans       PaymentPlan[]
+  payouts            Payout[]
+  financeAccounts    FinanceAccount[]
+  financeCategories  FinanceCategory[]
+  financeTransactions FinanceTransaction[]
+  payrollEntries     PayrollEntry[]
+  cashTransactions   CashTransaction[]
+  rooms              Room[]
+  clinicPlans        ClinicPlan[]
 }
 
 model User {
@@ -32,6 +44,8 @@ model User {
   role             Role               @default(ASISTAN)
   passwordHash     String?
   clinicId         String
+  phone            String?
+  address          String?
   image            String?
   createdAt        DateTime           @default(now())
   accounts         Account[]
@@ -42,9 +56,18 @@ model User {
   assignedPatients Patient[]          @relation("PatientSpecialist")
   payments         Payment[]          @relation("SpecialistPayments")
   appointments     Appointment[]      @relation("SpecialistAppointments")
+  timeOffs         SpecialistTimeOff[]
+  transactions     Transaction[]
+  paymentPlans     PaymentPlan[]
+  payouts          Payout[]
   sessions         Session[]
   specialist       SpecialistProfile?
   clinic           Clinic             @relation(fields: [clinicId], references: [id])
+  assessments      Assessment[]       @relation("UserAssessments")
+  financeTransactionsAsStaff  FinanceTransaction[] @relation("FinanceTransactionStaff")
+  financeTransactionsCreated  FinanceTransaction[] @relation("FinanceTransactionCreatedBy")
+  payrollEntries              PayrollEntry[]       @relation("PayrollStaff")
+  cashTransactions            CashTransaction[]    @relation("CashTransactionSpecialist")
 }
 
 model SpecialistProfile {
@@ -62,6 +85,23 @@ model SpecialistProfile {
   user          User            @relation(fields: [userId], references: [id])
 
   @@index([clinicId])
+}
+
+model SpecialistTimeOff {
+  id           String   @id @default(cuid())
+  clinicId     String
+  specialistId String
+  start        DateTime
+  end          DateTime?
+  reason       String?
+  createdAt    DateTime @default(now())
+
+  specialist   User     @relation(fields: [specialistId], references: [id])
+  clinic       Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId])
+  @@index([specialistId])
+  @@index([start, end])
 }
 
 model Patient {
@@ -82,10 +122,15 @@ model Patient {
   notes           String?
   assignments     Assignment[]
   payments        Payment[]
+  transactions    Transaction[]
+  paymentPlans    PaymentPlan[]
   patientNotes    Note[]       // Added for new note system
   appointments    Appointment[] // Added for appointment system
+  assessments     Assessment[]
   clinic          Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   specialist      User?        @relation("PatientSpecialist", fields: [assignedToId], references: [id])
+  financeTransactions FinanceTransaction[] @relation("FinanceTransactionPatient")
+  cashTransactions     CashTransaction[]     @relation("CashTransactionPatient")
 
   @@index([clinicId])
   @@index([name])
@@ -150,6 +195,7 @@ model Appointment {
   clinicId      String
   patientId     String
   specialistId  String
+  roomId        String?
   date          DateTime
   duration      Int               @default(60) // dakika cinsinden
   status        AppointmentStatus @default(SCHEDULED)
@@ -159,12 +205,28 @@ model Appointment {
   clinic        Clinic @relation(fields: [clinicId], references: [id])
   patient       Patient @relation(fields: [patientId], references: [id])
   specialist    User @relation("SpecialistAppointments", fields: [specialistId], references: [id])
+  room          Room? @relation(fields: [roomId], references: [id])
   sessionNotes  Note[] // Stage 7.5'teki Note modeliyle ilişki
 
   @@index([clinicId])
   @@index([patientId])
   @@index([specialistId])
+  @@index([roomId])
   @@index([date])
+}
+
+model Room {
+  id         String      @id @default(cuid())
+  clinicId   String
+  name       String
+  isActive   Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+
+  clinic     Clinic      @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@unique([clinicId, name])
+  @@index([clinicId])
 }
 
 model Note {
@@ -241,6 +303,7 @@ enum Role {
   ADMIN
   ASISTAN
   UZMAN
+  PERSONEL
 }
 
 enum AppointmentStatus {
@@ -252,6 +315,31 @@ enum AppointmentStatus {
 enum NoteVisibility {
   PRIVATE  // only author + admin
   INTERNAL // all clinic staff
+}
+
+enum AssessmentType {
+  PHQ9
+  GAD7
+}
+
+model Assessment {
+  id           String          @id @default(cuid())
+  clinicId     String
+  patientId    String
+  specialistId String
+  type         AssessmentType
+  answers      Json
+  total        Int
+  createdAt    DateTime        @default(now())
+
+  clinic     Clinic  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patient    Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  specialist User    @relation("UserAssessments", fields: [specialistId], references: [id])
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([specialistId])
+  @@index([createdAt])
 }
 
 model Payment {
@@ -272,4 +360,258 @@ model Payment {
   @@index([specialistId])
   @@index([clinicId])
   @@index([createdAt])
+  cashTransactions CashTransaction[] @relation("CashTransactionPayment")
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum PlanStatus {
+  PLANNED
+  PAID
+  CANCELED
+}
+
+enum PlanType {
+  INCOMING
+  OUTGOING
+}
+
+model PaymentPlan {
+  id            String     @id @default(cuid())
+  clinicId      String
+  patientId     String?
+  specialistId  String?
+  type          PlanType
+  amount        Float
+  dueDate       DateTime
+  description   String?
+  status        PlanStatus @default(PLANNED)
+  createdAt     DateTime   @default(now())
+
+  clinic     Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patient    Patient? @relation(fields: [patientId], references: [id])
+  specialist User?    @relation(fields: [specialistId], references: [id])
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([specialistId])
+  @@index([dueDate])
+  @@index([status])
+}
+
+model Plan {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  features    Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  clinicPlans ClinicPlan[]
+}
+
+model ClinicPlan {
+  id         String   @id @default(cuid())
+  clinicId   String
+  planId     String
+  startDate  DateTime @default(now())
+  endDate    DateTime?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  clinic     Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  plan       Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId])
+  @@index([planId])
+  @@index([isActive])
+}
+
+model Transaction {
+  id            String          @id @default(cuid())
+  clinicId      String
+  patientId     String?
+  specialistId  String?
+  type          TransactionType
+  amount        Float
+  description   String?
+  date          DateTime        @default(now())
+  createdAt     DateTime        @default(now())
+
+  clinic     Clinic    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patient    Patient?  @relation(fields: [patientId], references: [id])
+  specialist User?     @relation(fields: [specialistId], references: [id])
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([specialistId])
+  @@index([date])
+}
+
+enum PayoutType {
+  SPECIALIST
+  STAFF
+}
+
+enum PayoutCategory {
+  SALARY
+  BONUS
+  OTHER
+}
+
+model Payout {
+  id           String        @id @default(cuid())
+  clinicId     String
+  targetUserId String
+  type         PayoutType
+  category     PayoutCategory?
+  amount       Float
+  note         String?
+  date         DateTime      @default(now())
+  periodMonth  Int?
+  periodYear   Int?
+  createdAt    DateTime      @default(now())
+
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  target   User   @relation(fields: [targetUserId], references: [id])
+
+  @@index([clinicId])
+  @@index([targetUserId])
+  @@index([type])
+  @@index([periodYear, periodMonth])
+}
+
+enum FinanceTransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum FinanceAccountType {
+  CASH
+  BANK
+  OTHER
+}
+
+enum PayrollStatus {
+  PLANNED
+  PAID
+}
+
+model FinanceAccount {
+  id        String              @id @default(cuid())
+  clinicId  String
+  name      String
+  type      FinanceAccountType
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  clinic      Clinic            @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  transactions FinanceTransaction[]
+
+  @@index([clinicId])
+}
+
+model FinanceCategory {
+  id        String                 @id @default(cuid())
+  clinicId  String
+  name      String
+  type      FinanceTransactionType
+  createdAt DateTime               @default(now())
+
+  clinic      Clinic               @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  transactions FinanceTransaction[]
+  cashTransactions CashTransaction[] @relation("CashCategoryRel")
+
+  @@index([clinicId])
+}
+
+model FinanceTransaction {
+  id           String                  @id @default(cuid())
+  clinicId     String
+  date         DateTime
+  type         FinanceTransactionType
+  amount       Float
+  description  String?
+  accountId    String?
+  categoryId   String?
+  staffId      String?
+  patientId    String?
+  createdById  String?
+
+  clinic     Clinic          @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  account    FinanceAccount? @relation(fields: [accountId], references: [id])
+  category   FinanceCategory? @relation(fields: [categoryId], references: [id])
+  staff      User?           @relation("FinanceTransactionStaff", fields: [staffId], references: [id])
+  patient    Patient?        @relation("FinanceTransactionPatient", fields: [patientId], references: [id])
+  createdBy  User?           @relation("FinanceTransactionCreatedBy", fields: [createdById], references: [id])
+  payrollEntries PayrollEntry[]  @relation("PayrollTransaction")
+
+  @@index([clinicId])
+  @@index([date])
+  @@index([type])
+}
+
+model PayrollEntry {
+  id           String            @id @default(cuid())
+  clinicId     String
+  staffId      String
+  periodStart  DateTime
+  periodEnd    DateTime
+  grossAmount  Float
+  netAmount    Float
+  status       PayrollStatus     @default(PLANNED)
+  paidAt       DateTime?
+  transactionId String?
+
+  clinic     Clinic             @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  staff      User               @relation("PayrollStaff", fields: [staffId], references: [id])
+  transaction FinanceTransaction? @relation("PayrollTransaction", fields: [transactionId], references: [id])
+
+  @@index([clinicId])
+  @@index([staffId])
+}
+enum CashTransactionType {
+  IN
+  OUT
+}
+
+enum CashTransactionCategory {
+  HASTA_ODEME
+  UZMAN_ODEME
+  MAAS
+  KIRA
+  DIGER_GIDER
+  DIGER_GELIR
+}
+
+model CashTransaction {
+  id            String                 @id @default(cuid())
+  clinicId      String
+  type          CashTransactionType
+  category      CashTransactionCategory
+  amount        Float
+  paymentId     String?
+  patientId     String?
+  specialistId  String?
+  cashCategoryId String?
+  description   String?
+  date          DateTime               @default(now())
+  createdAt     DateTime               @default(now())
+
+  clinic     Clinic     @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  payment    Payment?   @relation("CashTransactionPayment", fields: [paymentId], references: [id])
+  patient    Patient?   @relation("CashTransactionPatient", fields: [patientId], references: [id])
+  specialist User?      @relation("CashTransactionSpecialist", fields: [specialistId], references: [id])
+  cashCategory FinanceCategory? @relation("CashCategoryRel", fields: [cashCategoryId], references: [id])
+
+  @@index([clinicId])
+  @@index([date])
+  @@index([type])
+  @@index([category])
+  @@index([cashCategoryId])
 }

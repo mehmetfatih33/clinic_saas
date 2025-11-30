@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,9 +10,9 @@ import { useToast } from "@/components/ui/ToastProvider";
 const schema = z.object({
   patientId: z.string().min(1, "Hasta seçimi gerekli"),
   specialistId: z.string().min(1, "Uzman seçimi gerekli"),
-  feeScheduleId: z.string().min(1, "Ücret tarifesi seçimi gerekli"),
   splitClinic: z.number().min(0).max(100),
   splitDoctor: z.number().min(0).max(100),
+  customAmount: z.number().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -28,6 +28,7 @@ export default function AddAssignmentModal({ onAdded }: { onAdded: () => void })
     }
   });
   const { show } = useToast();
+  const [customAmountTl, setCustomAmountTl] = useState("");
 
   // Watch split values to ensure they add up to 100
   const splitClinic = watch("splitClinic");
@@ -50,13 +51,18 @@ export default function AddAssignmentModal({ onAdded }: { onAdded: () => void })
     },
   });
 
-  const { data: fees } = useQuery({
-    queryKey: ["fees"],
-    queryFn: async () => {
-      const res = await fetch("/api/fees");
-      return res.json();
-    },
-  });
+  // Ücret tarifesi kaldırıldı; yalnızca özel tutar kullanılacak
+
+  const selectedSpecialistId = watch("specialistId");
+  useEffect(() => {
+    if (!selectedSpecialistId) return;
+    const sp = Array.isArray(specialists) ? specialists.find((s: any) => s.id === selectedSpecialistId) : null;
+    const hf = sp?.specialist?.hourlyFee || 0;
+    if (hf && hf > 0) {
+      setCustomAmountTl(String(hf));
+      setValue("customAmount", Math.round(Number(hf) * 100));
+    }
+  }, [selectedSpecialistId, specialists, setValue]);
 
   const onSubmit = async (data: FormData) => {
     if (data.splitClinic + data.splitDoctor !== 100) {
@@ -69,7 +75,13 @@ export default function AddAssignmentModal({ onAdded }: { onAdded: () => void })
       const res = await fetch("/api/assignments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          patientId: data.patientId,
+          specialistId: data.specialistId,
+          customAmount: data.customAmount ?? (customAmountTl ? Math.round(Number(customAmountTl) * 100) : undefined),
+          splitClinic: data.splitClinic,
+          splitDoctor: data.splitDoctor,
+        }),
       });
       
       if (!res.ok) {
@@ -140,18 +152,22 @@ export default function AddAssignmentModal({ onAdded }: { onAdded: () => void })
                 {errors.specialistId && <p className="text-red-500 text-sm mt-1">{errors.specialistId.message}</p>}
               </div>
               
+              {/* Ücret tarifesi kaldırıldı */}
+
               <div>
-                <label className="block text-sm font-medium mb-1">Ücret Tarifesi</label>
-                <select 
-                  {...register("feeScheduleId")} 
+                <label className="block text-sm font-medium mb-1">Özel Tutar (₺)</label>
+                <input 
+                  type="number" 
+                  min="0" 
+                  step="1" 
+                  value={customAmountTl}
+                  onChange={(e) => {
+                    setCustomAmountTl(e.target.value);
+                    const v = e.target.value ? Math.round(Number(e.target.value) * 100) : undefined;
+                    setValue("customAmount", v as any);
+                  }}
                   className="w-full border rounded p-2 dark:bg-gray-800 dark:border-gray-700"
-                >
-                  <option value="">Ücret tarifesi seçin</option>
-                  {fees?.map((fee: any) => (
-                    <option key={fee.id} value={fee.id}>{fee.title} - ₺{fee.amount / 100}</option>
-                  ))}
-                </select>
-                {errors.feeScheduleId && <p className="text-red-500 text-sm mt-1">{errors.feeScheduleId.message}</p>}
+                />
               </div>
               
               <div className="grid grid-cols-2 gap-4">

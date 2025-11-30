@@ -14,7 +14,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     // Await params for Next.js 15+
     const { id } = await params;
 
-    const specialist = await prisma.user.findUnique({
+    const specialist = await prisma.user.findFirst({
       where: {
         id,
         clinicId: session.user.clinicId,
@@ -71,6 +71,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       id: specialist.id,
       name: specialist.name,
       email: specialist.email,
+      phone: specialist.phone ?? null,
+      address: (specialist as any).address ?? null,
       specialist: {
         branch: specialist.specialist?.branch ?? "Belirtilmemiş",
         defaultShare: specialist.specialist?.defaultShare ?? 50,
@@ -107,7 +109,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const body = await req.json();
 
     // Verify specialist belongs to same clinic
-    const specialist = await prisma.user.findUnique({
+    const specialist = await prisma.user.findFirst({
       where: {
         id,
         clinicId: session.user.clinicId,
@@ -117,11 +119,23 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       },
     });
 
-    if (!specialist || !specialist.specialist) {
+    if (!specialist) {
       return NextResponse.json({ message: "Uzman bulunamadı" }, { status: 404 });
     }
 
-    // Prepare update data
+    if (!specialist.specialist) {
+      const createdProfile = await prisma.specialistProfile.create({
+        data: {
+          clinicId: session.user.clinicId,
+          userId: specialist.id,
+          defaultShare: 50,
+          hourlyFee: 0,
+        },
+      });
+      specialist.specialist = createdProfile;
+    }
+
+    // Prepare update data for SpecialistProfile
     const updateData: any = {};
     
     if (body.hourlyFee !== undefined) {
@@ -148,10 +162,26 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       data: updateData,
     });
 
+    // Optionally update User fields
+    const userUpdate: any = {};
+    if (body.name !== undefined) userUpdate.name = body.name;
+    if (body.email !== undefined) userUpdate.email = body.email;
+    if (body.phone !== undefined) userUpdate.phone = body.phone;
+    if (body.address !== undefined) userUpdate.address = body.address ?? null;
+
+    let updatedUser = specialist;
+    if (Object.keys(userUpdate).length > 0) {
+      updatedUser = await prisma.user.update({
+        where: { id: specialist.id },
+        data: userUpdate,
+        include: { specialist: true },
+      });
+    }
+
     return NextResponse.json({
       success: true,
       specialist: {
-        ...specialist,
+        ...updatedUser,
         specialist: updatedProfile,
       },
     });

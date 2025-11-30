@@ -26,8 +26,8 @@ export async function middleware(req: NextRequest) {
     '/exports': ['ADMIN'],
     '/reports': ['ADMIN'],
     '/clinics': ['ADMIN'],
-    '/payments': ['ADMIN', 'ASISTAN', 'UZMAN'],
-    '/appointments': ['ADMIN', 'ASISTAN'],
+    '/finance': ['ADMIN', 'ASISTAN', 'UZMAN'],
+    '/appointments': ['ADMIN', 'ASISTAN', 'UZMAN'],
     '/notes': ['ADMIN', 'UZMAN'],
     '/patients': ['ADMIN', 'ASISTAN', 'UZMAN'],
     '/dashboard': ['ADMIN', 'ASISTAN', 'UZMAN']
@@ -56,8 +56,8 @@ export const config = {
     "/exports/:path*",
     "/specialists/:path*",
     "/assignments/:path*",
-    "/payments/:path*",
     "/reports/:path*",
     "/clinics/:path*",
+    "/finance/:path*",
   ],
 };

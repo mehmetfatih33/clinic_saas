@@ -1,0 +1,275 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+
+}
+
+model Clinic {
+  id                 String              @id @default(cuid())
+  name               String
+  slug               String              @unique
+  createdAt          DateTime            @default(now())
+  appointments       Appointment[]
+  assignments        Assignment[]
+  audits             AuditLog[]
+  feeSchedules       FeeSchedule[]
+  notes              Note[]
+  patients           Patient[]
+  payments           Payment[]
+  specialistFees     SpecialistFee[]
+  specialistProfiles SpecialistProfile[]
+  users              User[]
+}
+
+model User {
+  id               String             @id @default(cuid())
+  email            String             @unique
+  name             String?
+  role             Role               @default(ASISTAN)
+  passwordHash     String?
+  clinicId         String
+  image            String?
+  createdAt        DateTime           @default(now())
+  accounts         Account[]
+  assignments      Assignment[]       @relation("AssignmentSpecialist")
+  audits           AuditLog[]
+  feeSchedules     FeeSchedule[]
+  notes            Note[]             @relation("NoteAuthor")
+  assignedPatients Patient[]          @relation("PatientSpecialist")
+  payments         Payment[]          @relation("SpecialistPayments")
+  appointments     Appointment[]      @relation("SpecialistAppointments")
+  sessions         Session[]
+  specialist       SpecialistProfile?
+  clinic           Clinic             @relation(fields: [clinicId], references: [id])
+}
+
+model SpecialistProfile {
+  id            String          @id @default(cuid())
+  clinicId      String
+  userId        String          @unique
+  branch        String?
+  bio           String?
+  defaultShare  Float           @default(50)
+  hourlyFee     Float           @default(0)
+  totalPatients Int             @default(0)
+  totalRevenue  Float           @default(0)
+  fees          SpecialistFee[]
+  clinic        Clinic          @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  user          User            @relation(fields: [userId], references: [id])
+
+  @@index([clinicId])
+}
+
+model Patient {
+  id              String       @id @default(cuid())
+  clinicId        String
+  name            String
+  email           String?
+  phone           String?
+  address         String?
+  reference       String?
+  fee             Float?
+  assignedToId    String?
+  specialistShare Float?
+  totalSessions   Int          @default(0)
+  totalPayments   Float        @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  notes           String?
+  assignments     Assignment[]
+  payments        Payment[]
+  patientNotes    Note[]       // Added for new note system
+  appointments    Appointment[] // Added for appointment system
+  clinic          Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  specialist      User?        @relation("PatientSpecialist", fields: [assignedToId], references: [id])
+
+  @@index([clinicId])
+  @@index([name])
+  @@index([phone])
+}
+
+model FeeSchedule {
+  id             String          @id @default(cuid())
+  clinicId       String
+  title          String
+  amount         Int
+  createdBy      String
+  createdAt      DateTime        @default(now())
+  assignments    Assignment[]
+  creator        User            @relation(fields: [createdBy], references: [id])
+  clinic         Clinic          @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  specialistFees SpecialistFee[]
+
+  @@unique([clinicId, title])
+  @@index([clinicId])
+}
+
+model SpecialistFee {
+  id           String            @id @default(cuid())
+  clinicId     String
+  specialistId String
+  feeId        String
+  customAmount Int?
+  splitClinic  Int?
+  splitDoctor  Int?
+  fee          FeeSchedule       @relation(fields: [feeId], references: [id], onDelete: Cascade)
+  specialist   SpecialistProfile @relation(fields: [specialistId], references: [id], onDelete: Cascade)
+  clinic       Clinic            @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@unique([specialistId, feeId])
+  @@index([clinicId])
+}
+
+model Assignment {
+  id           String        @id @default(cuid())
+  clinicId     String
+  patientId    String
+  specialistId String
+  feeId        String?
+  customAmount Int?
+  splitClinic  Int?
+  splitDoctor  Int?
+  status       String        @default("active")
+  createdAt    DateTime      @default(now())
+  fee          FeeSchedule?  @relation(fields: [feeId], references: [id])
+  specialist   User          @relation("AssignmentSpecialist", fields: [specialistId], references: [id])
+  patient      Patient       @relation(fields: [patientId], references: [id])
+  clinic       Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([specialistId])
+}
+
+model Appointment {
+  id            String            @id @default(cuid())
+  clinicId      String
+  patientId     String
+  specialistId  String
+  date          DateTime
+  duration      Int               @default(60) // dakika cinsinden
+  status        AppointmentStatus @default(SCHEDULED)
+  notes         String?
+  createdAt     DateTime          @default(now())
+
+  clinic        Clinic @relation(fields: [clinicId], references: [id])
+  patient       Patient @relation(fields: [patientId], references: [id])
+  specialist    User @relation("SpecialistAppointments", fields: [specialistId], references: [id])
+  sessionNotes  Note[] // Stage 7.5'teki Note modeliyle ilişki
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([specialistId])
+  @@index([date])
+}
+
+model Note {
+  id            String         @id @default(cuid())
+  clinicId      String
+  patientId     String
+  authorId      String
+  appointmentId String?        // null → general note, not null → session note
+  content       String
+  visibility    NoteVisibility @default(PRIVATE)
+  createdAt     DateTime       @default(now())
+
+  author      User         @relation("NoteAuthor", fields: [authorId], references: [id])
+  patient     Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  clinic      Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([authorId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  clinicId  String
+  actorId   String
+  action    String
+  entity    String
+  entityId  String
+  meta      Json?
+  createdAt DateTime @default(now())
+  actor     User     @relation(fields: [actorId], references: [id])
+  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId])
+  @@index([createdAt])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+enum Role {
+  ADMIN
+  ASISTAN
+  UZMAN
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELED
+}
+
+enum NoteVisibility {
+  PRIVATE  // only author + admin
+  INTERNAL // all clinic staff
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  patientId     String
+  specialistId  String
+  clinicId      String
+  amount        Float
+  specialistCut Float
+  clinicCut     Float
+  createdAt     DateTime @default(now())
+
+  patient    Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  specialist User    @relation("SpecialistPayments", fields: [specialistId], references: [id])
+  clinic     Clinic  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@index([specialistId])
+  @@index([clinicId])
+  @@index([createdAt])
+}

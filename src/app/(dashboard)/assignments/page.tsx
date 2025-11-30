@@ -74,7 +74,7 @@ export default function AssignmentsPage() {
                 <tr>
                   <th className="text-left p-3">Hasta</th>
                   <th className="text-left p-3">Uzman</th>
-                  <th className="text-left p-3">Ücret Tarifesi</th>
+                  <th className="text-left p-3">Tutar (₺)</th>
                   <th className="text-center p-3">Klinik Payı</th>
                   <th className="text-center p-3">Uzman Payı</th>
                   <th className="text-center p-3">Durum</th>
@@ -91,9 +91,8 @@ export default function AssignmentsPage() {
                       {assignment.specialist?.name || "N/A"}
                     </td>
                     <td className="p-3 text-gray-600 dark:text-gray-300">
-                      <div>
-                        <div className="font-medium">{assignment.feeSchedule?.title || "N/A"}</div>
-                        <div className="text-xs text-gray-500">₺{(assignment.feeSchedule?.amount || 0) / 100}</div>
+                      <div className="font-medium">
+                        ₺{(((assignment as any).customAmount ?? (assignment.feeSchedule?.amount ?? 0)) as number) / 100}
                       </div>
                     </td>
                     <td className="p-3 text-center">
@@ -127,7 +126,7 @@ export default function AssignmentsPage() {
 
         {data?.length === 0 && !isLoading && (
           <div className="text-center py-8 text-gray-500">
-            Henüz atama oluşturulmamış. İlk atamayı oluşturmak için "+ Yeni Atama" butonunu kullanın.
+            Henüz atama oluşturulmamış. İlk atamayı oluşturmak için &quot;+ Yeni Atama&quot; butonunu kullanın.
           </div>
         )}
       </div>

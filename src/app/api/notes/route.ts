@@ -3,6 +3,48 @@ import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/authz";
 import { NoteVisibility } from "@prisma/client";
 
+export async function GET(req: Request) {
+  try {
+    const session = await requireSession();
+    const { searchParams } = new URL(req.url);
+    const patientId = searchParams.get("patientId");
+
+    const baseWhere = patientId
+      ? { patientId, clinicId: session.user.clinicId }
+      : { clinicId: session.user.clinicId };
+
+    const whereClause =
+      session.user.role === "ADMIN"
+        ? baseWhere
+        : {
+            ...baseWhere,
+            OR: [
+              { visibility: NoteVisibility.INTERNAL },
+              { authorId: session.user.id },
+            ],
+          };
+
+    const notes = await prisma.note.findMany({
+      where: whereClause,
+      include: {
+        author: { select: { id: true, name: true, role: true } },
+        patient: { select: { id: true, name: true } },
+        appointment: { select: { id: true, date: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: patientId ? undefined : 50,
+    });
+
+    return NextResponse.json(notes);
+  } catch (err) {
+    console.error("❌ Note Fetch Error:", err);
+    return NextResponse.json(
+      { message: "Notlar yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin." },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const session = await requireSession();
@@ -44,6 +86,8 @@ export async function POST(req: Request) {
       },
       include: {
         author: { select: { id: true, name: true, role: true } },
+        patient: { select: { id: true, name: true } },
+        appointment: { select: { id: true, date: true } },
       },
     });
 
@@ -56,3 +100,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Not eklenirken bir hata oluştu. Lütfen tekrar deneyin." }, { status: 500 });
   }
 }
+
+// duplicate GET removed; handler above supports optional patientId

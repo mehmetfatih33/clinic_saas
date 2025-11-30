@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/authz";
+import { hasFeature } from "@/lib/features";
 
 export async function POST(req: Request) {
   try {
     const session = await requireSession();
+    if (!(await hasFeature(session.user.clinicId, "accounting"))) {
+      return NextResponse.json({ message: "Bu özellik paketinizde aktif değil" }, { status: 403 });
+    }
     const data = await req.json();
 
     const { patientId, amount } = data;
@@ -50,7 +54,7 @@ export async function POST(req: Request) {
     // Create payment record with transaction
     await prisma.$transaction(async (tx) => {
       // Create payment
-      await tx.payment.create({
+      const created = await tx.payment.create({
         data: {
           patientId,
           specialistId: patient.assignedToId!,
@@ -60,6 +64,23 @@ export async function POST(req: Request) {
           clinicCut,
         },
       });
+
+      try {
+        await tx.cashTransaction.create({
+          data: {
+            clinicId: session.user.clinicId,
+            type: "IN",
+            category: "HASTA_ODEME",
+            amount,
+            paymentId: created.id,
+            patientId,
+            specialistId: patient.assignedToId!,
+            description: `Hasta ödemesi: ₺${amount.toFixed(2)}`,
+          },
+        });
+      } catch (e) {
+        console.error("CashTransaction create error", e);
+      }
 
       // Update patient's total payments
       await tx.patient.update({

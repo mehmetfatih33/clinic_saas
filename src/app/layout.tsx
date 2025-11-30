@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Clinic SaaS", description: "Multi-te
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="tr">
+    <html lang="tr" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{

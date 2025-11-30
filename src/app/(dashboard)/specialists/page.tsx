@@ -157,7 +157,6 @@ function EditableField({
 }
 
 export default function SpecialistsPage() {
-  const { data: session } = useSession();
   const { data, refetch, isLoading } = useQuery<Specialist[]>({
     queryKey: ["specialists"],
     queryFn: async () => {
@@ -166,7 +165,7 @@ export default function SpecialistsPage() {
     },
   });
 
-  const isAdmin = session?.user?.role === "ADMIN";
+  
 
   return (
     <ToastProvider>
@@ -200,15 +199,6 @@ export default function SpecialistsPage() {
 
                 <CardContent>
                   <div className="space-y-3">
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Uzmanlık Alanı
-                      </p>
-                      <p className="font-medium">
-                        {specialist.specialist?.branch || "Belirtilmemiş"}
-                      </p>
-                    </div>
-
                     <div className="grid grid-cols-2 gap-4">
                       <EditableField
                         label="Varsayılan Pay"
@@ -228,44 +218,18 @@ export default function SpecialistsPage() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Hasta Sayısı
-                        </p>
-                        <p className="font-medium">
-                          {specialist.specialist?.totalPatients || 0}
-                        </p>
-                      </div>
-                      {isAdmin && (
-                        <div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Toplam Gelir
-                          </p>
-                          <p className="font-medium">
-                            {(
-                              specialist.specialist?.totalRevenue || 0
-                            ).toLocaleString("tr-TR")}{" "}
-                            ₺
-                          </p>
-                        </div>
-                      )}
+                    <div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Hasta Sayısı
+                      </p>
+                      <p className="font-medium">
+                        {specialist.specialist?.totalPatients || 0}
+                      </p>
                     </div>
-
-                    {specialist.specialist?.bio && (
-                      <div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Biyografi
-                        </p>
-                        <p className="text-sm truncate">
-                          {specialist.specialist.bio}
-                        </p>
-                      </div>
-                    )}
 
                     <div className="pt-2">
                       <Link href={`/specialists/${specialist.id}`}>
-                        <Button className="w-full">Dashboard Görüntüle</Button>
+                        <Button className="w-full">Detaya Git</Button>
                       </Link>
                     </div>
                   </div>
@@ -277,7 +241,7 @@ export default function SpecialistsPage() {
 
         {data?.length === 0 && !isLoading && (
           <div className="text-center py-8 text-gray-500">
-            Henüz uzman eklenmemiş. İlk uzmanı eklemek için "+ Yeni Uzman"
+            Henüz uzman eklenmemiş. İlk uzmanı eklemek için &quot;+ Yeni Uzman&quot;
             butonunu kullanın.
           </div>
         )}

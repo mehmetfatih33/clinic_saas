@@ -209,4 +209,18 @@
   .rbc-header {
     padding: 8px 4px !important;
   }
+
+  /* Time view should be scrollable horizontally on mobile */
+  .rbc-time-view {
+    overflow-x: auto !important;
+  }
+  .rbc-time-content {
+    min-height: 400px !important;
+  }
+  .rbc-time-gutter .rbc-timeslot-group {
+    min-height: 48px !important; /* compact hour height */
+  }
+  .rbc-toolbar {
+    padding: 10px !important;
+  }
 }

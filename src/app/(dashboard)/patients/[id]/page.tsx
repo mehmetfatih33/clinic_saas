@@ -457,6 +457,15 @@ export default function PatientDetailsPage({ params }: PatientDetailsProps) {
     },
   });
 
+  const { data: transactions = [] } = useQuery({
+    queryKey: ["transactions", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/transactions?patientId=${id}`);
+      if (!res.ok) throw new Error("İşlem geçmişi alınamadı");
+      return res.json();
+    },
+  });
+
   // Fetch specialists for dropdown
   const { data: specialists } = useQuery({
     queryKey: ["specialists"],
@@ -665,6 +674,9 @@ export default function PatientDetailsPage({ params }: PatientDetailsProps) {
             <Link href="/patients/new">
               <Button>Yeni Hasta</Button>
             </Link>
+            <Link href={`/patients/${id}/notes`}>
+              <Button variant="secondary">Notlar</Button>
+            </Link>
           </div>
         </div>
 
@@ -788,7 +800,7 @@ export default function PatientDetailsPage({ params }: PatientDetailsProps) {
               <CardTitle>İstatistikler</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="text-center p-4 bg-blue-50 rounded-lg">
                   <p className="text-2xl font-bold text-blue-600">{patient.totalSessions}</p>
                   <p className="text-sm text-gray-600">Toplam Seans</p>
@@ -796,6 +808,14 @@ export default function PatientDetailsPage({ params }: PatientDetailsProps) {
                 <div className="text-center p-4 bg-green-50 rounded-lg">
                   <p className="text-2xl font-bold text-green-600">₺{patient.totalPayments?.toFixed(2) || "0.00"}</p>
                   <p className="text-sm text-gray-600">Toplam Ödeme</p>
+                </div>
+                <div className="text-center p-4 bg-amber-50 rounded-lg">
+                  <p className="text-2xl font-bold text-amber-600">₺{(
+                    transactions?.filter((t: any) => t.type === "INCOME").reduce((a: number, b: any) => a + Number(b.amount || 0), 0) -
+                    (transactions?.filter((t: any) => t.type === "EXPENSE").reduce((a: number, b: any) => a + Number(b.amount || 0), 0) || 0) -
+                    (patient.totalPayments || 0)
+                  ).toFixed(2)}</p>
+                  <p className="text-sm text-gray-600">Bakiye</p>
                 </div>
               </div>
             </CardContent>

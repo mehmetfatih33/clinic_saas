@@ -1,13 +1,46 @@
 @import "tailwindcss";
+@custom-variant dark ".dark &";
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --border: #e5e7eb;
+  --primary: #0ea5e9;
+  --primary-foreground: #ffffff;
+  --accent: #f1f5f9;
+  --accent-foreground: #0f172a;
+  --muted-foreground: #6b7280;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --card: #ffffff;
+  --card-foreground: #171717;
+  --popover: #ffffff;
+  --popover-foreground: #171717;
+  --input: #e5e7eb;
+  --ring: #0ea5e9;
+  --secondary: #f3f4f6;
+  --secondary-foreground: #111827;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -19,8 +52,48 @@
   }
 }
 
+.dark {
+  --background: #0a0a0a;
+  --foreground: #e5e5e5;
+  --border: #1f2937;
+  --primary: #38bdf8;
+  --primary-foreground: #0b1220;
+  --accent: #111827;
+  --accent-foreground: #e5e7eb;
+  --muted-foreground: #9ca3af;
+  --destructive: #f87171;
+  --destructive-foreground: #111827;
+  --card: #111827;
+  --card-foreground: #e5e5e5;
+  --popover: #0f172a;
+  --popover-foreground: #e5e5e5;
+  --input: #374151;
+  --ring: #38bdf8;
+  --secondary: #1f2937;
+  --secondary-foreground: #e5e7eb;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Mobile sidebar overlay behavior */
+@media (max-width: 768px) {
+  .sidebar-backdrop { display: none; }
+  body.mobile-sidebar-open .sidebar-backdrop { display: block; }
+
+  .sidebar { display: none; }
+  body.mobile-sidebar-open .sidebar {
+    display: flex;
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    width: 80vw;
+    max-width: 300px;
+    z-index: 50;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  }
 }

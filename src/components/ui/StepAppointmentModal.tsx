@@ -8,18 +8,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/ToastProvider";
 import { ArrowLeft, ArrowRight, User, Calendar, Clock } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 interface StepAppointmentModalProps {
   open: boolean;
   onClose: () => void;
+  mode?: "modal" | "page";
 }
 
-export default function StepAppointmentModal({ open, onClose }: StepAppointmentModalProps) {
+export default function StepAppointmentModal({ open, onClose, mode = "modal" }: StepAppointmentModalProps) {
   const { data: session } = useSession();
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState({
     patientId: "",
     specialistId: "",
+    roomId: "",
     date: "",
     selectedDate: "",
     selectedTime: "",
@@ -27,11 +31,41 @@ export default function StepAppointmentModal({ open, onClose }: StepAppointmentM
     notes: "",
   });
   
-  // Available time slots (8 AM to 7 PM)
-  const timeSlots = [
-    "08:00", "09:00", "10:00", "11:00", "12:00",
-    "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"
-  ];
+  // Clinic schedule
+  const { data: clinicSettings } = useQuery({
+    queryKey: ["clinic-settings"],
+    queryFn: async () => {
+      const res = await fetch("/api/clinic/settings");
+      if (!res.ok) return null;
+      return res.json();
+    }
+  });
+
+  const computeTimeSlots = (dateStr: string) => {
+    if (!dateStr) return [] as string[];
+    const d = new Date(dateStr + "T00:00:00");
+    const weekday = d.getDay(); // 0=Sun
+    const map: Record<number, "sun"|"mon"|"tue"|"wed"|"thu"|"fri"|"sat"> = { 0: "sun", 1: "mon", 2: "tue", 3: "wed", 4: "thu", 5: "fri", 6: "sat" };
+    const key = map[weekday];
+    const ws = clinicSettings?.workSchedule?.[key];
+    const open = ws?.open || "08:00";
+    const close = ws?.close || "18:00";
+    const closed = ws?.closed === true;
+    if (closed) return [];
+    const [oh, om] = open.split(":").map(Number);
+    const [ch, cm] = close.split(":").map(Number);
+    const openMinutes = oh * 60 + om;
+    const closeMinutes = ch * 60 + cm;
+    const slotLength = 60; // 1 saatlik periyotlar
+    const lastStart = closeMinutes - slotLength;
+    const slots: string[] = [];
+    for (let t = openMinutes; t <= lastStart; t += slotLength) {
+      const h = Math.floor(t / 60);
+      const m = t % 60;
+      slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+    }
+    return slots;
+  };
 
   // Get existing appointments for selected date
   const { data: existingAppointments = [] } = useQuery({
@@ -109,6 +143,27 @@ export default function StepAppointmentModal({ open, onClose }: StepAppointmentM
     },
     enabled: open && form.patientId !== "",
   });
+  const { data: rooms = [] } = useQuery({
+    queryKey: ["rooms", form.date, form.duration],
+    queryFn: async () => {
+      if (!form.date) return [] as any[];
+      const qs = `?date=${encodeURIComponent(form.date)}&duration=${form.duration}`;
+      const res = await fetch(`/api/rooms${qs}`);
+      if (!res.ok) throw new Error("Odalar yüklenemedi");
+      return res.json();
+    },
+    enabled: !!form.date,
+  });
+  const { data: timeoffs = [] } = useQuery<any[]>({
+    queryKey: ["timeoff", form.specialistId],
+    queryFn: async () => {
+      if (!form.specialistId) return [] as any[];
+      const res = await fetch(`/api/specialists/${form.specialistId}/timeoff`, { credentials: "include" });
+      if (!res.ok) return [] as any[];
+      return res.json();
+    },
+    enabled: !!form.specialistId,
+  });
 
   // Get patient's assigned specialist
   const selectedPatient = patients.find((p: any) => p.id === form.patientId);
@@ -131,9 +186,21 @@ export default function StepAppointmentModal({ open, onClose }: StepAppointmentM
 
   const createAppointment = useMutation({
     mutationFn: async () => {
+      if (form.date) {
+        const x = new Date(form.date).getTime();
+        const blocked = timeoffs.some((t: any) => {
+          const s = new Date(t.start).getTime();
+          const e = t.end ? new Date(t.end).getTime() : undefined;
+          return e ? x >= s && x <= e : x >= s;
+        });
+        if (blocked) {
+          throw new Error("Seçilen saat uzman için tatil/izin gününde.");
+        }
+      }
       const res = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(form),
       });
       if (!res.ok) {
@@ -146,6 +213,7 @@ export default function StepAppointmentModal({ open, onClose }: StepAppointmentM
       setForm({ 
         patientId: "", 
         specialistId: "", 
+        roomId: "",
         date: "", 
         selectedDate: "", 
         selectedTime: "", 
@@ -153,7 +221,11 @@ export default function StepAppointmentModal({ open, onClose }: StepAppointmentM
         notes: "" 
       });
       setCurrentStep(1);
-      onClose();
+      if (mode === "modal") {
+        onClose();
+      } else {
+        router.push("/appointments");
+      }
       qc.invalidateQueries({ queryKey: ["appointments"] });
       showToast("✅ Randevu başarıyla oluşturuldu", "success");
     },
@@ -164,7 +236,7 @@ export default function StepAppointmentModal({ open, onClose }: StepAppointmentM
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.patientId || !form.specialistId || !form.date || !form.selectedTime) {
+    if (!form.patientId || !form.specialistId || !form.roomId || !form.date || !form.selectedTime) {
       showToast("Tüm bilgiler doldurulmalıdır. Lütfen eksik alanları tamamlayın.", "error");
       return;
     }
@@ -172,15 +244,19 @@ export default function StepAppointmentModal({ open, onClose }: StepAppointmentM
   };
 
   const nextStep = () => {
-    if (currentStep === 1 && !form.patientId) {
-      showToast("Hasta seçimi zorunludur. Lütfen bir hasta seçin.", "error");
+    if (currentStep === 1 && !form.specialistId) {
+      showToast("Uzman seçimi zorunludur.", "error");
       return;
     }
-    if (currentStep === 2 && !form.specialistId) {
-      showToast("Uzman seçimi zorunludur. Lütfen bir uzman seçin.", "error");
+    if (currentStep === 2 && !form.patientId) {
+      showToast("Hasta seçimi zorunludur.", "error");
       return;
     }
-    if (currentStep < 3) {
+    if (currentStep === 3 && (!form.selectedDate || !form.selectedTime)) {
+      showToast("Tarih ve saat seçimi zorunludur.", "error");
+      return;
+    }
+    if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -196,6 +272,7 @@ export default function StepAppointmentModal({ open, onClose }: StepAppointmentM
     setForm({ 
       patientId: "", 
       specialistId: "", 
+      roomId: "",
       date: "", 
       selectedDate: "", 
       selectedTime: "", 
@@ -205,11 +282,11 @@ export default function StepAppointmentModal({ open, onClose }: StepAppointmentM
     onClose();
   };
 
-  if (!open) return null;
+  if (mode === "modal" && !open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto border shadow-xl">
+    <div className={mode === "modal" ? "fixed inset-0 bg-black/50 flex items-center justify-center z-50" : ""}>
+      <div className={mode === "modal" ? "bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto border shadow-xl" : "bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl mx-auto border"}>
         
         {/* Header with Steps */}
         <div className="mb-6">
@@ -221,13 +298,13 @@ export default function StepAppointmentModal({ open, onClose }: StepAppointmentM
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                 currentStep >= 1 ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-500"
               }`}>
-                <User size={16} />
+                👨‍⚕️
               </div>
               <div className={`w-6 h-0.5 ${currentStep >= 2 ? "bg-blue-500" : "bg-gray-200"}`}></div>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                 currentStep >= 2 ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-500"
               }`}>
-                👨‍⚕️
+                <User size={16} />
               </div>
               <div className={`w-6 h-0.5 ${currentStep >= 3 ? "bg-blue-500" : "bg-gray-200"}`}></div>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
@@ -235,21 +312,59 @@ export default function StepAppointmentModal({ open, onClose }: StepAppointmentM
               }`}>
                 <Calendar size={16} />
               </div>
+              <div className={`w-6 h-0.5 ${currentStep >= 4 ? "bg-blue-500" : "bg-gray-200"}`}></div>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                currentStep >= 4 ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-500"
+              }`}>
+                <Clock size={16} />
+              </div>
             </div>
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-300">
-            Adım {currentStep}/3: {
-              currentStep === 1 ? "Hasta Seçimi" : 
-              currentStep === 2 ? "Uzman Onayı" : 
-              "Tarih ve Detaylar"
+            Adım {currentStep}/4: {
+              currentStep === 1 ? "Uzman Seçimi" : 
+              currentStep === 2 ? "Hasta Seçimi" : 
+              currentStep === 3 ? "Tarih ve Saat" :
+              "Oda Seçimi"
             }
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           
-          {/* Step 1: Patient Selection */}
           {currentStep === 1 && (
+            <>
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  👨‍⚕️ Uzman Seçin
+                </label>
+                {session?.user?.role === "UZMAN" ? (
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+                    <p className="text-blue-800 dark:text-blue-200 text-sm">Kendi randevunuzu oluşturuyorsunuz</p>
+                  </div>
+                ) : (
+                  <Select value={form.specialistId} onValueChange={(value) => setForm({ ...form, specialistId: value })}>
+                    <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
+                      <SelectValue placeholder="Uzman seçin..." className="text-gray-900 dark:text-white" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
+                      {specialists.map((specialist: any) => (
+                        <SelectItem 
+                          key={specialist.id} 
+                          value={specialist.id}
+                          className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600"
+                        >
+                          {specialist.name} {specialist.specialist?.branch && `(${specialist.specialist.branch})`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </>
+          )}
+
+          {currentStep === 2 && (
             <>
               <div className="space-y-1">
                 <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -279,77 +394,16 @@ export default function StepAppointmentModal({ open, onClose }: StepAppointmentM
                   </SelectContent>
                 </Select>
               </div>
-              
               {form.patientId && selectedPatient && (
                 <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
                   <p className="text-sm text-blue-800 dark:text-blue-200">
                     <strong>Seçilen Hasta:</strong> {selectedPatient.name}
                   </p>
-                  {assignedSpecialist && (
-                    <p className="text-sm text-blue-600 dark:text-blue-300">
-                      <strong>Atanmış Uzman:</strong> {assignedSpecialist.name}
-                      {assignedSpecialist.specialist?.branch && ` (${assignedSpecialist.specialist.branch})`}
-                    </p>
-                  )}
                 </div>
               )}
             </>
           )}
 
-          {/* Step 2: Specialist Confirmation */}
-          {currentStep === 2 && (
-            <>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  👨‍⚕️ Uzman Onayı
-                </label>
-                {assignedSpecialist ? (
-                  <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-green-800 dark:text-green-200">
-                          {assignedSpecialist.name}
-                        </p>
-                        {assignedSpecialist.specialist?.branch && (
-                          <p className="text-sm text-green-600 dark:text-green-300">
-                            {assignedSpecialist.specialist.branch}
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-green-600 dark:text-green-400">
-                        ✅ Otomatik Seçildi
-                      </div>
-                    </div>
-                  </div>
-                ) : session?.user?.role === "UZMAN" ? (
-                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
-                    <p className="text-blue-800 dark:text-blue-200 text-sm">
-                      Kendi randevunuzu oluşturuyorsunuz
-                    </p>
-                  </div>
-                ) : (
-                  <Select value={form.specialistId} onValueChange={(value) => setForm({ ...form, specialistId: value })}>
-                    <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
-                      <SelectValue placeholder="Uzman seçin..." className="text-gray-900 dark:text-white" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
-                      {specialists.map((specialist: any) => (
-                        <SelectItem 
-                          key={specialist.id} 
-                          value={specialist.id}
-                          className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600"
-                        >
-                          {specialist.name} {specialist.specialist?.branch && `(${specialist.specialist.branch})`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-            </>
-          )}
-
-          {/* Step 3: Date and Time Selection */}
           {currentStep === 3 && (
             <>
               <div className="space-y-4">
@@ -372,7 +426,7 @@ export default function StepAppointmentModal({ open, onClose }: StepAppointmentM
                       🕐 Saat Seçin
                     </label>
                     <div className="grid grid-cols-3 gap-2">
-                      {timeSlots.map((time) => {
+                      {(computeTimeSlots(form.selectedDate)).map((time) => {
                         const isAvailable = isTimeSlotAvailable(time);
                         const isSelected = form.selectedTime === time;
                         
@@ -442,6 +496,35 @@ export default function StepAppointmentModal({ open, onClose }: StepAppointmentM
             </>
           )}
 
+          {currentStep === 4 && (
+            <>
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-900 dark:text-gray-100">🏥 Oda Seçin</label>
+                  <Select value={form.roomId} onValueChange={(value) => setForm({ ...form, roomId: value })}>
+                    <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
+                      <SelectValue placeholder="Oda seçin..." className="text-gray-900 dark:text-white" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
+                      {rooms.length === 0 && (
+                        <SelectItem value="" disabled className="text-gray-500">Uygun oda yok</SelectItem>
+                      )}
+                      {rooms.map((room: any) => (
+                        <SelectItem 
+                          key={room.id} 
+                          value={room.id}
+                          className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600"
+                        >
+                          {room.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Navigation Buttons */}
           <div className="flex justify-between pt-6">
             <div className="flex space-x-2">
@@ -458,7 +541,7 @@ export default function StepAppointmentModal({ open, onClose }: StepAppointmentM
                 İptal
               </Button>
               
-              {currentStep < 3 ? (
+              {currentStep < 4 ? (
                 <Button type="button" onClick={nextStep}>
                   İleri
                   <ArrowRight size={16} className="ml-1" />
@@ -466,7 +549,7 @@ export default function StepAppointmentModal({ open, onClose }: StepAppointmentM
               ) : (
                 <Button
                   type="submit"
-                  disabled={createAppointment.isPending || !form.patientId || !form.specialistId || !form.selectedDate || !form.selectedTime}
+                  disabled={createAppointment.isPending || !form.patientId || !form.specialistId || !form.roomId || !form.selectedDate || !form.selectedTime}
                 >
                   {createAppointment.isPending ? "Oluşturuluyor..." : "Randevuyu Oluştur"}
                 </Button>

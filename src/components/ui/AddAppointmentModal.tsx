@@ -18,6 +18,7 @@ export default function AddAppointmentModal({ open, onClose }: AddAppointmentMod
   const [form, setForm] = useState({
     patientId: "",
     specialistId: "",
+    roomId: "",
     date: "",
     duration: 60,
     notes: "",
@@ -48,6 +49,39 @@ export default function AddAppointmentModal({ open, onClose }: AddAppointmentMod
     enabled: open,
   });
 
+  const { data: rooms = [] } = useQuery({
+    queryKey: ["rooms", form.date, form.duration],
+    queryFn: async () => {
+      if (!form.date) return [] as any[];
+      const qs = `?date=${encodeURIComponent(form.date)}&duration=${form.duration}`;
+      const res = await fetch(`/api/rooms${qs}`);
+      if (!res.ok) throw new Error("Odalar yüklenemedi");
+      return res.json();
+    },
+    enabled: open && !!form.date,
+  });
+
+  const { data: timeoffs = [] } = useQuery<any[]>({
+    queryKey: ["timeoff", form.specialistId],
+    queryFn: async () => {
+      if (!form.specialistId) return [];
+      const res = await fetch(`/api/specialists/${form.specialistId}/timeoff`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: open && !!form.specialistId,
+  });
+
+  const { data: clinicSettings } = useQuery({
+    queryKey: ["clinic-settings"],
+    queryFn: async () => {
+      const res = await fetch("/api/clinic/settings");
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: open,
+  });
+
   // Uzmanlar için specialistId'yi otomatik ayarla
   React.useEffect(() => {
     if (session?.user?.role === "UZMAN" && session?.user?.id) {
@@ -57,9 +91,20 @@ export default function AddAppointmentModal({ open, onClose }: AddAppointmentMod
 
   const createAppointment = useMutation({
     mutationFn: async () => {
+      const start = new Date(form.date);
+      const blocked = timeoffs.some((t: any) => {
+        const s = new Date(t.start).getTime();
+        const e = t.end ? new Date(t.end).getTime() : undefined;
+        const x = start.getTime();
+        return e ? x >= s && x <= e : x >= s; // if end missing, treat as from start onwards
+      });
+      if (blocked) {
+        throw new Error("Seçilen tarih uzman için tatil/izin gününde");
+      }
       const res = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(form),
       });
       if (!res.ok) {
@@ -69,7 +114,7 @@ export default function AddAppointmentModal({ open, onClose }: AddAppointmentMod
       return res.json();
     },
     onSuccess: () => {
-      setForm({ patientId: "", specialistId: "", date: "", duration: 60, notes: "" });
+      setForm({ patientId: "", specialistId: "", roomId: "", date: "", duration: 60, notes: "" });
       onClose();
       qc.invalidateQueries({ queryKey: ["appointments"] });
       showToast("✅ Randevu başarıyla oluşturuldu", "success");
@@ -81,9 +126,30 @@ export default function AddAppointmentModal({ open, onClose }: AddAppointmentMod
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.patientId || !form.specialistId || !form.date) {
-      showToast("Hasta, uzman ve tarih seçimi zorunludur", "error");
+    if (!form.patientId || !form.specialistId || !form.roomId || !form.date) {
+      showToast("Hasta, uzman, oda ve tarih seçimi zorunludur", "error");
       return;
+    }
+    // Clinic working hours validation
+    if (clinicSettings?.workSchedule) {
+      const dt = new Date(form.date);
+      const map: Record<number, "sun"|"mon"|"tue"|"wed"|"thu"|"fri"|"sat"> = { 0: "sun", 1: "mon", 2: "tue", 3: "wed", 4: "thu", 5: "fri", 6: "sat" };
+      const key = map[dt.getDay()];
+      const ws = clinicSettings.workSchedule[key];
+      if (ws?.closed) {
+        showToast("Seçilen gün klinik kapalı", "error");
+        return;
+      }
+      const mins = (h: number, m: number) => h * 60 + m;
+      const ch = dt.getHours();
+      const cm = dt.getMinutes();
+      const [oh, om] = (ws?.open || "08:00").split(":").map(Number);
+      const [xh, xm] = (ws?.close || "18:00").split(":").map(Number);
+      const cur = mins(ch, cm);
+      if (cur < mins(oh, om) || cur > mins(xh, xm)) {
+        showToast("Seçilen saat çalışma saatleri dışında", "error");
+        return;
+      }
     }
     createAppointment.mutate();
   };
@@ -117,8 +183,8 @@ export default function AddAppointmentModal({ open, onClose }: AddAppointmentMod
             </Select>
           </div>
 
-          {/* Specialist Selection - Sadece Admin ve Asistan görebilir */}
-          {session?.user?.role !== "UZMAN" && (
+        {/* Specialist Selection - Sadece Admin ve Asistan görebilir */}
+        {session?.user?.role !== "UZMAN" && (
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-900 dark:text-gray-100">Uzman</label>
               <Select value={form.specialistId} onValueChange={(value) => setForm({ ...form, specialistId: value })}>
@@ -148,10 +214,34 @@ export default function AddAppointmentModal({ open, onClose }: AddAppointmentMod
                 <p className="text-blue-800 dark:text-blue-200">Kendi randevunuzu oluşturuyorsunuz</p>
               </div>
             </div>
-          )}
+        )}
 
-          {/* Date & Time */}
-          <div className="space-y-1">
+        {/* Room Selection */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-900 dark:text-gray-100">Oda</label>
+          <Select value={form.roomId} onValueChange={(value) => setForm({ ...form, roomId: value })}>
+            <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
+              <SelectValue placeholder={form.date ? "Oda seçin" : "Önce tarih/saat seçin"} className="text-gray-900 dark:text-white" />
+            </SelectTrigger>
+            <SelectContent className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
+              {rooms.length === 0 && form.date && (
+                <SelectItem value="" disabled className="text-gray-500">Uygun oda yok</SelectItem>
+              )}
+              {rooms.map((room: any) => (
+                <SelectItem 
+                  key={room.id} 
+                  value={room.id}
+                  className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600"
+                >
+                  {room.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Date & Time */}
+        <div className="space-y-1">
             <label className="text-sm font-medium text-gray-900 dark:text-gray-100">Tarih ve Saat</label>
             <Input
               type="datetime-local"
@@ -159,6 +249,11 @@ export default function AddAppointmentModal({ open, onClose }: AddAppointmentMod
               onChange={(e) => setForm({ ...form, date: e.target.value })}
               className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
             />
+            {form.specialistId && timeoffs.length > 0 && (
+              <p className="text-xs text-yellow-700 mt-1">
+                Bu uzman için bazı tarihler kapalı. Seçtiğiniz saat kapalıysa uyarı alırsınız.
+              </p>
+            )}
           </div>
 
           {/* Duration */}
@@ -190,7 +285,7 @@ export default function AddAppointmentModal({ open, onClose }: AddAppointmentMod
           <div className="flex justify-between pt-4">
             <Button
               type="submit"
-              disabled={createAppointment.isPending || !form.patientId || !form.specialistId || !form.date}
+              disabled={createAppointment.isPending || !form.patientId || !form.specialistId || !form.roomId || !form.date}
             >
               {createAppointment.isPending ? "Oluşturuluyor..." : "Randevu Oluştur"}
             </Button>

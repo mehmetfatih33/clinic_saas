@@ -5,13 +5,14 @@ import { ToastProvider } from "@/components/ui/ToastProvider";
 
 interface Note {
   id: string;
-  assignmentId: string;
   content: string;
   createdAt: string;
   author?: {
     name: string;
     role: string;
   };
+  patient?: { id: string; name: string };
+  appointment?: { id: string; date: string };
 }
 
 export default function NotesPage() {
@@ -38,15 +39,15 @@ export default function NotesPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-100 dark:bg-gray-800">
                 <tr>
-                  <th className="text-left p-3">Atama ID</th>
-                  <th className="text-left p-3">Not İçeriği</th>
+                  <th className="text-left p-3">Hasta</th>
+                  <th className="text-left p-3">Not</th>
                   <th className="p-3 text-center">Tarih</th>
                 </tr>
               </thead>
               <tbody>
                 {data?.map((n: Note) => (
                   <tr key={n.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-sky-50/40 dark:hover:bg-gray-800">
-                    <td className="p-3 text-gray-700 dark:text-gray-200">{n.assignmentId}</td>
+                    <td className="p-3 text-gray-700 dark:text-gray-200">{n.patient?.name || "-"}</td>
                     <td className="p-3 text-gray-700 dark:text-gray-300">{n.content}</td>
                     <td className="p-3 text-center text-gray-500 text-xs">{new Date(n.createdAt).toLocaleString()}</td>
                   </tr>

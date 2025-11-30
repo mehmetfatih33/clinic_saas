@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/authz";
+import { hasFeature } from "@/lib/features";
 
 export async function GET() {
   try {
     const session = await requireSession();
+    if (!(await hasFeature(session.user.clinicId, "accounting"))) {
+      return NextResponse.json({ message: "Bu özellik paketinizde aktif değil" }, { status: 403 });
+    }
     const userRole = session.user.role;
     const userId = session.user.id;
 

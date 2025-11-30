@@ -9,6 +9,11 @@ import { useToast } from "@/components/ui/ToastProvider";
 const schema = z.object({
   name: z.string().min(2, "İsim çok kısa"),
   email: z.string().email("Geçerli e-posta girin"),
+  phone: z
+    .string()
+    .min(10, "Telefon numarası çok kısa")
+    .regex(/^\+?\d{10,15}$/u, "Geçerli telefon numarası girin"),
+  address: z.string().optional(),
   password: z.string().min(6, "Şifre en az 6 karakter olmalı").optional(),
   branch: z.string().optional(),
   bio: z.string().optional(),
@@ -20,7 +25,7 @@ type FormData = z.infer<typeof schema>;
 export default function AddSpecialistModal({ onAdded }: { onAdded: () => void }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({ 
+  const { register, handleSubmit, reset, formState: { errors, isValid } } = useForm<FormData>({ 
     resolver: zodResolver(schema) 
   });
   const { show } = useToast();
@@ -35,8 +40,9 @@ export default function AddSpecialistModal({ onAdded }: { onAdded: () => void })
       });
       
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Ekleme hatası");
+        const errorData = await res.json().catch(() => ({} as any));
+        const msg = errorData.message || errorData.error || res.statusText || "Ekleme hatası";
+        throw new Error(msg);
       }
       
       show("Uzman başarıyla eklendi ✅", "success");
@@ -68,8 +74,10 @@ export default function AddSpecialistModal({ onAdded }: { onAdded: () => void })
             className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto"
           >
             <h2 className="text-lg font-semibold mb-4">Yeni Uzman Ekle</h2>
+            <p className="text-xs text-gray-500 mb-2">Zorunlu alanlar: Ad Soyad, E‑posta, Telefon</p>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div>
+                <label className="text-sm font-medium">Ad Soyad *</label>
                 <input 
                   {...register("name")} 
                   placeholder="Ad Soyad" 
@@ -79,6 +87,7 @@ export default function AddSpecialistModal({ onAdded }: { onAdded: () => void })
               </div>
               
               <div>
+                <label className="text-sm font-medium">E‑posta *</label>
                 <input 
                   {...register("email")} 
                   placeholder="E-posta" 
@@ -86,6 +95,25 @@ export default function AddSpecialistModal({ onAdded }: { onAdded: () => void })
                   className="w-full border rounded p-2 dark:bg-gray-800 dark:border-gray-700" 
                 />
                 {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Telefon *</label>
+                <input 
+                  {...register("phone")} 
+                  placeholder="Telefon (örn: +905551234567)" 
+                  className="w-full border rounded p-2 dark:bg-gray-800 dark:border-gray-700" 
+                />
+                {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>}
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Adres</label>
+                <input
+                  {...register("address")}
+                  placeholder="Adres (opsiyonel)"
+                  className="w-full border rounded p-2 dark:bg-gray-800 dark:border-gray-700"
+                />
               </div>
               
               <div>
@@ -137,7 +165,7 @@ export default function AddSpecialistModal({ onAdded }: { onAdded: () => void })
                 </button>
                 <button 
                   type="submit" 
-                  disabled={loading} 
+                  disabled={loading || !isValid} 
                   className="px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600 disabled:opacity-50"
                 >
                   {loading ? "Kaydediliyor..." : "Kaydet"}

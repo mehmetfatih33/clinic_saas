@@ -34,7 +34,7 @@ export async function POST(req: Request) {
         clinicId: session.user.clinicId,
         patientId: data.patientId,
         specialistId: data.specialistId,
-        feeId: data.feeId,
+        feeId: data.feeId ?? null,
         customAmount: data.customAmount || null,
         splitClinic: data.splitClinic ?? 50,
         splitDoctor: data.splitDoctor ?? 50,

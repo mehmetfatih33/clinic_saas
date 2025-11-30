@@ -24,6 +24,10 @@ export default function PatientsPage() {
       // Ensure we always return an array
       return Array.isArray(result) ? result : [];
     },
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnReconnect: "always",
+    refetchOnWindowFocus: true,
   });
 
   return (

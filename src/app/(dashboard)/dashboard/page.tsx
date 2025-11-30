@@ -2,17 +2,24 @@
 "use client";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { Users, CreditCard, DollarSign, Calendar, UserCheck, Clock, FileText, Activity } from "lucide-react";
+import { Users, CreditCard, DollarSign, Calendar, UserCheck, Clock, FileText, Activity, Building2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { ToastProvider, useToast } from "@/components/ui/ToastProvider";
+import { ComposedChart, Bar, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, Label } from "recharts";
+import moment from "moment";
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({ patients: 0, payments: 0, income: 0 });
   const [loading, setLoading] = useState(true);
   const { data: session } = useSession();
+  const { show } = useToast();
   const router = useRouter();
   const isUzman = session?.user?.role === "UZMAN";
+  const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "ASISTAN";
+  const [range, setRange] = useState<"ALL" | "1M" | "6M" | "1Y">("1M");
+  const [notifiedIds, setNotifiedIds] = useState<Set<string>>(new Set());
 
   // Fetch appointments for recent activity (role-based)
   const { data: recentAppointments = [] } = useQuery({
@@ -50,6 +57,82 @@ export default function DashboardPage() {
     enabled: !!session?.user
   });
 
+  const { data: allAppointments = [] } = useQuery({
+    queryKey: ["appointments-all"],
+    queryFn: async () => {
+      const res = await fetch("/api/appointments");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: isAdmin
+  });
+
+  const { data: allPatients = [] } = useQuery({
+    queryKey: ["patients-all"],
+    queryFn: async () => {
+      const res = await fetch("/api/patients");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: isAdmin
+  });
+
+  
+
+  const { data: roomsAll = [] } = useQuery({
+    queryKey: ["rooms-all"],
+    queryFn: async () => {
+      const res = await fetch("/api/rooms");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: isAdmin
+  });
+
+  const { data: roomsAvailable = [] } = useQuery({
+    queryKey: ["rooms-available"],
+    queryFn: async () => {
+      const date = new Date().toISOString();
+      const res = await fetch(`/api/rooms?date=${encodeURIComponent(date)}&duration=60`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: isAdmin
+  });
+
+  const { data: transactions = [] } = useQuery({
+    queryKey: ["transactions-dashboard"],
+    queryFn: async () => {
+      const res = await fetch("/api/transactions");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: isAdmin,
+  });
+
+  const { data: specialists = [] } = useQuery({
+    queryKey: ["specialists-dashboard"],
+    queryFn: async () => {
+      const res = await fetch("/api/specialists");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: isAdmin,
+  });
+
+  const totalIncome = transactions
+    .filter((t: any) => t.type === "INCOME")
+    .reduce((a: number, b: any) => a + Number(b.amount || 0), 0);
+  const totalExpense = transactions
+    .filter((t: any) => t.type === "EXPENSE")
+    .reduce((a: number, b: any) => a + Number(b.amount || 0), 0);
+  const totalSum = totalIncome + totalExpense;
+  const netTotal = totalIncome - totalExpense;
+  const donutData = [
+    { name: "Gelir", value: totalIncome, color: "#6366f1" },
+    { name: "Gider", value: totalExpense, color: "#f59e0b" },
+  ];
+
   useEffect(() => {
     async function fetchStats() {
       try {
@@ -66,6 +149,32 @@ export default function DashboardPage() {
     }
     fetchStats();
   }, []);
+
+  useEffect(() => {
+    let timer: any;
+    const roles = ["ADMIN", "ASISTAN", "UZMAN"];
+    if (session?.user?.role && roles.includes(session.user.role)) {
+      const tick = async () => {
+        const now = new Date();
+        const to = new Date(now.getTime() + 60 * 60000);
+        const sp = new URLSearchParams({ from: now.toISOString(), to: to.toISOString() });
+        const res = await fetch(`/api/appointments?${sp.toString()}`);
+        if (!res.ok) return;
+        const upcoming = await res.json();
+        upcoming.forEach((a: any) => {
+          if (!notifiedIds.has(a.id)) {
+            const t = new Date(a.date).toLocaleString("tr-TR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+            const msg = `⏰ 1 saat sonra randevu: ${a.patient?.name || "Hasta"} • ${a.specialist?.name || "Uzman"} • ${t}`;
+            show(msg, "info");
+            setNotifiedIds(prev => new Set(prev).add(a.id));
+          }
+        });
+      };
+      tick();
+      timer = setInterval(tick, 60000);
+    }
+    return () => { if (timer) clearInterval(timer); };
+  }, [session, notifiedIds, show]);
 
   const cards = [
     { 
@@ -121,33 +230,79 @@ export default function DashboardPage() {
   };
 
   return (
+    <ToastProvider>
     <div className="space-y-6">
-      {/* Stats Cards */}
-      <motion.div
-        className="grid gap-6 md:grid-cols-3"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.6 }}
-      >
-        {cards.map(({ icon: Icon, label, value, color, iconColor, onClick }) => (
-          <motion.div
-            key={label}
-            className={`rounded-2xl ${color} p-6 shadow-sm hover:shadow-md transition-all border border-gray-200 dark:border-gray-700 cursor-pointer`}
-            whileHover={{ scale: 1.02 }}
-            onClick={onClick}
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{label}</h3>
-                <p className="text-2xl font-bold text-gray-800 dark:text-gray-200 mt-1">{value}</p>
-              </div>
-              <div className={`p-3 rounded-full ${color}`}>
-                <Icon className={iconColor} size={24} />
-              </div>
+      {isAdmin ? (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-semibold">Hoş geldiniz, {session?.user?.name}</h1>
+            <div className="flex gap-2">
+              <button onClick={() => router.push("/appointments/create")} className="px-3 py-2 rounded-md bg-green-500 text-white text-sm">+ Randevu Ekle</button>
+              <div className="px-3 py-2 rounded-md bg-blue-50 text-blue-600 text-sm">{moment().startOf("month").format("DD MMM")} - {moment().endOf("month").format("DD MMM")}</div>
             </div>
-          </motion.div>
-        ))}
-      </motion.div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
+            <div className="rounded-xl bg-white p-5 border">
+              <div className="flex items-center justify-between">
+                <div className="text-3xl font-bold">{allAppointments.filter((a: any) => moment(a.date).isSame(moment(), "day") && a.status !== "CANCELED").length}</div>
+                <Calendar className="text-blue-600" />
+              </div>
+              <div className="text-sm text-gray-500 mt-1">Bugünkü Randevular</div>
+              <div className="text-xs text-gray-400 mt-2">Toplam: {allAppointments.length}</div>
+            </div>
+            <div className="rounded-xl bg-white p-5 border">
+              <div className="flex items-center justify-between">
+                <div className="text-3xl font-bold">{allPatients.length}</div>
+                <Users className="text-purple-600" />
+              </div>
+              <div className="text-sm text-gray-500 mt-1">Toplam Hastalar</div>
+              <div className="text-xs text-gray-400 mt-2">Son 30 gün: {allPatients.filter((p: any) => moment(p.createdAt).isAfter(moment().subtract(30, "days"))).length}</div>
+            </div>
+            <div className="rounded-xl bg-white p-5 border">
+              <div className="flex items-center justify-between">
+                <div className="text-3xl font-bold">{roomsAll.length}</div>
+                <Building2 className="text-indigo-600" />
+              </div>
+              <div className="text-sm text-gray-500 mt-1">Toplam Odalar</div>
+              <div className="text-xs text-green-600 mt-2">Uygun: {roomsAvailable.length}</div>
+            </div>
+            <div className="rounded-xl bg-white p-5 border">
+              <div className="flex items-center justify-between">
+                <div className="text-3xl font-bold">{specialists.length}</div>
+                <UserCheck className="text-teal-600" />
+              </div>
+              <div className="text-sm text-gray-500 mt-1">Toplam Uzmanlar</div>
+            </div>
+          </div>
+        
+        </div>
+      ) : (
+        <motion.div
+          className="grid gap-6 md:grid-cols-3"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        >
+          {cards.map(({ icon: Icon, label, value, color, iconColor, onClick }) => (
+            <motion.div
+              key={label}
+              className={`rounded-2xl ${color} p-6 shadow-sm hover:shadow-md transition-all border border-gray-200 dark:border-gray-700 cursor-pointer`}
+              whileHover={{ scale: 1.02 }}
+              onClick={onClick}
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{label}</h3>
+                  <p className="text-2xl font-bold text-gray-800 dark:text-gray-200 mt-1">{value}</p>
+                </div>
+                <div className={`p-3 rounded-full ${color}`}>
+                  <Icon className={iconColor} size={24} />
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
 
       {/* Content Grid */}
       <div className="grid gap-6 md:grid-cols-3">
@@ -369,6 +524,54 @@ export default function DashboardPage() {
           </div>
         </motion.div>
       </div>
+
+      {/* Bottom Donut Chart */}
+      {isAdmin && (
+        <div className="rounded-2xl bg-white p-6 border mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold">Gelir / Gider</h3>
+              <p className="text-xs text-gray-500">Net: ₺{netTotal.toLocaleString("tr-TR")}</p>
+            </div>
+            <button className="px-3 py-1 rounded-md bg-gray-100 text-sm">Rapor Oluştur</button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+            <div className="md:col-span-2" style={{ height: 280 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={donutData} dataKey="value" nameKey="name" innerRadius={70} outerRadius={110} paddingAngle={2}>
+                    {donutData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v: any) => `₺${Number(v).toLocaleString("tr-TR")}`} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: "#6366f1" }}></span>
+                  <span>Gelir</span>
+                </div>
+                <span className="font-medium">₺{totalIncome.toLocaleString("tr-TR")}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: "#f59e0b" }}></span>
+                  <span>Gider</span>
+                </div>
+                <span className="font-medium">₺{totalExpense.toLocaleString("tr-TR")}</span>
+              </div>
+              <div className="flex items-center justify-between border-t pt-2">
+                <span>Net</span>
+                <span className="font-semibold text-blue-600">₺{netTotal.toLocaleString("tr-TR")}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+    </ToastProvider>
   );
 }

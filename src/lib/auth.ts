@@ -77,4 +77,40 @@ export const authOptions: NextAuthOptions = {
   
   secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === "development",
+  events: {
+    async signIn({ user }) {
+      try {
+        if (!user) return;
+        await prisma.auditLog.create({
+          data: {
+            clinicId: (user as any).clinicId,
+            actorId: user.id as string,
+            action: "SIGN_IN",
+            entity: "Auth",
+            entityId: user.id as string,
+            meta: { message: "Giriş yapıldı" },
+          },
+        });
+      } catch (e) {
+        // ignore
+      }
+    },
+    async signOut({ token }) {
+      try {
+        if (!token) return;
+        await prisma.auditLog.create({
+          data: {
+            clinicId: (token as any).clinicId,
+            actorId: (token as any).id,
+            action: "SIGN_OUT",
+            entity: "Auth",
+            entityId: (token as any).id,
+            meta: { message: "Çıkış yapıldı" },
+          },
+        });
+      } catch (e) {
+        // ignore
+      }
+    },
+  },
 };

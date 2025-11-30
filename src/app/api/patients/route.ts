@@ -50,9 +50,35 @@ export async function POST(req: Request) {
     console.log("🏥 Kullanıcı oturumu:", session?.user);
 
     // Gerekli alanları kontrol et
-    if (!data.name || !data.assignedToId) {
+    const name = (data.name || '').trim();
+    const phone = (data.phone || '').trim();
+    const fee = data.fee !== undefined ? parseFloat(String(data.fee)) : NaN;
+    const phoneRegex = /^\+?\d{10,15}$/u;
+
+    if (!name) {
       return NextResponse.json(
-        { message: "Hasta adı ve uzmana atama zorunludur. Lütfen gerekli alanları doldurun." },
+        { message: "Ad Soyad zorunludur." },
+        { status: 400 }
+      );
+    }
+
+    if (!phone || !phoneRegex.test(phone)) {
+      return NextResponse.json(
+        { message: "Telefon zorunludur ve geçerli formatta olmalıdır. (Örn: +905551234567)" },
+        { status: 400 }
+      );
+    }
+
+    if (!data.assignedToId) {
+      return NextResponse.json(
+        { message: "Uzman seçimi zorunludur." },
+        { status: 400 }
+      );
+    }
+
+    if (!Number.isFinite(fee) || fee <= 0) {
+      return NextResponse.json(
+        { message: "Ücret zorunludur ve 0'dan büyük olmalıdır." },
         { status: 400 }
       );
     }
@@ -60,11 +86,12 @@ export async function POST(req: Request) {
     // Kayıt oluştur
     const patient = await prisma.patient.create({
       data: {
-        name: data.name,
+        name,
         email: data.email || null,
-        phone: data.phone || null,
+        phone,
         address: data.address || null,
         reference: data.reference || null,
+        fee,
         specialistShare: parseFloat(data.specialistShare || "50"),
         assignedToId: data.assignedToId,
         clinicId: session.user.clinicId || "demo-clinic", // 🌟 BURASI ÖNEMLİ
