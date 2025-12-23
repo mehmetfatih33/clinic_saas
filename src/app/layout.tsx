@@ -1,24 +1,8 @@
 import "./globals.css";
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import { ClientProviders } from "@/components/providers/ClientProviders";
 
-export const metadata: Metadata = { 
-  title: "Cliterapi", 
-  description: "Cliterapi - Klinik Yönetim Sistemi",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "Cliterapi",
-  },
-  formatDetection: {
-    telephone: false,
-  },
-};
-
-export const viewport: Viewport = {
-  themeColor: "#FFFFFF",
-};
+export const metadata: Metadata = { title: "Cliterapi", description: "Cliterapi - Klinik Yönetim Sistemi" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
