@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { randomUUID } from "crypto";
+import { sendEmail } from "@/lib/mailer";
 
 export async function POST(req: Request) {
   try {
@@ -28,10 +29,38 @@ export async function POST(req: Request) {
     const origin = new URL(req.url).origin;
     const resetUrl = `${origin}/reset-password/${token}`;
 
-    // Geliştirme ortamında bağlantıyı döndür
+    // E-posta gönderimi
+    try {
+      await sendEmail(
+        email,
+        "Şifre Sıfırlama Talebi",
+        `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Şifre Sıfırlama</h2>
+          <p>Merhaba ${user.name || "Kullanıcı"},</p>
+          <p>Hesabınız için şifre sıfırlama talebinde bulundunuz. Şifrenizi sıfırlamak için aşağıdaki butona tıklayın:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" style="background-color: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Şifremi Sıfırla</a>
+          </div>
+          <p>Veya şu bağlantıyı tarayıcınıza yapıştırın:</p>
+          <p><a href="${resetUrl}">${resetUrl}</a></p>
+          <p>Bu talep sizden gelmediyse bu e-postayı görmezden gelebilirsiniz.</p>
+          <p>Link 1 saat boyunca geçerlidir.</p>
+        </div>
+        `
+      );
+    } catch (emailError) {
+      console.error("❌ E-posta gönderilemedi:", emailError);
+      // E-posta hatası olsa bile kullanıcıya başarılı döndür (güvenlik için)
+      // Ancak loglarda hatayı görebiliriz
+    }
+
+    // Geliştirme ortamında bağlantıyı döndür, prod ortamında gizle
+    const isDev = process.env.NODE_ENV === "development";
+    
     return NextResponse.json({
-      message: "Şifre sıfırlama bağlantısı e‑postanıza gönderildi",
-      resetUrl,
+      message: "Eğer hesap mevcutsa talimatlar gönderildi",
+      resetUrl: isDev ? resetUrl : undefined,
     });
   } catch (error) {
     console.error("❌ Forgot password error:", error);

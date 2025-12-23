@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { requireSession, ensureRole } from "@/lib/authz";
 import { hash } from "bcryptjs";
 import type { Role } from "@prisma/client";
+import { sendEmail } from "@/lib/mailer";
+import { generatePassword } from "@/lib/utils";
 
 export async function GET() {
   try {
@@ -11,9 +13,10 @@ export async function GET() {
       where: { clinicId: session.user.clinicId, NOT: { role: "UZMAN" } },
       select: { id: true, name: true, email: true, phone: true, role: true }
     });
-    return NextResponse.json(staff);
+    return NextResponse.json({ ok: true, items: staff ?? [] }, { status: 200 });
   } catch (err: any) {
-    return NextResponse.json({ message: "Çalışanlar yüklenemedi" }, { status: 500 });
+    console.error("❌ Staff GET error:", err);
+    return NextResponse.json({ ok: false, error: String(err), items: [] }, { status: 200 });
   }
 }
 
@@ -37,11 +40,18 @@ export async function POST(req: Request) {
 
     const normalizedRole = (role === "ADMIN" ? "ADMIN" : role === "ASISTAN" ? "ASISTAN" : "PERSONEL") as Role;
     let passwordHash: string | null = null;
+    let finalPassword = password;
+
+    // Admin/Asistan ise ve şifre yoksa otomatik oluştur
+    if ((normalizedRole === "ADMIN" || normalizedRole === "ASISTAN") && !finalPassword) {
+      finalPassword = generatePassword(10);
+    }
+
     if (normalizedRole === "ADMIN" || normalizedRole === "ASISTAN") {
-      if (!password || typeof password !== "string" || password.length < 6) {
+      if (!finalPassword || typeof finalPassword !== "string" || finalPassword.length < 6) {
         return NextResponse.json({ message: "ADMIN/ASISTAN için şifre zorunlu (min 6)" }, { status: 400 });
       }
-      passwordHash = await hash(password, 10);
+      passwordHash = await hash(finalPassword, 10);
     }
 
     const created = await prisma.user.create({
@@ -55,6 +65,33 @@ export async function POST(req: Request) {
       },
       select: { id: true, name: true, email: true, phone: true, role: true }
     });
+
+    // E-posta gönder (Sadece şifre belirlendiyse/oluşturulduysa)
+    if (finalPassword && passwordHash) {
+      try {
+        await sendEmail(
+          created.email,
+          "Klinik Personel Hesabınız Oluşturuldu",
+          `
+          <div style="font-family: Arial, sans-serif; color: #333;">
+            <h2>Merhaba ${created.name},</h2>
+            <p>Klinik yönetim sistemine <strong>${normalizedRole}</strong> olarak kaydınız yapılmıştır.</p>
+            <p>Giriş bilgileriniz aşağıdadır:</p>
+            <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <p><strong>E-posta:</strong> ${created.email}</p>
+              <p><strong>Şifre:</strong> ${finalPassword}</p>
+            </div>
+            <p>Giriş yaptıktan sonra şifrenizi değiştirmenizi öneririz.</p>
+            <p>İyi çalışmalar.</p>
+          </div>
+          `
+        );
+        console.log("📧 Personel şifre maili gönderildi:", created.email);
+      } catch (mailError) {
+        console.error("❌ Personel mail gönderilemedi:", mailError);
+      }
+    }
+
     return NextResponse.json(created, { status: 201 });
   } catch (err: any) {
     console.error("Staff POST error:", err);

@@ -31,9 +31,9 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json(payments);
+    return NextResponse.json({ ok: true, items: payments ?? [] }, { status: 200 });
   } catch (err) {
     console.error("💥 Payment list error:", err);
-    return NextResponse.json({ message: "Ödeme listesi yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin." }, { status: 500 });
+    return NextResponse.json({ ok: false, message: (err as Error).message || "Sunucu hatası", items: [] }, { status: 500 });
   }
 }

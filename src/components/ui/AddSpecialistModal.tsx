@@ -60,7 +60,7 @@ export default function AddSpecialistModal({ onAdded }: { onAdded: () => void })
     <>
       <motion.button
         onClick={() => setOpen(true)}
-        className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-4 py-2 font-medium shadow hover:opacity-90"
+        className="rounded-xl bg-primary text-white px-4 py-2 font-medium shadow hover:bg-primary/90"
         whileHover={{ scale: 1.05 }}
       >
         + Yeni Uzman
@@ -119,10 +119,13 @@ export default function AddSpecialistModal({ onAdded }: { onAdded: () => void })
               <div>
                 <input 
                   {...register("password")} 
-                  placeholder="Şifre (opsiyonel)" 
+                  placeholder="Şifre (Opsiyonel)" 
                   type="password"
                   className="w-full border rounded p-2 dark:bg-gray-800 dark:border-gray-700" 
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  * Boş bırakırsanız otomatik şifre oluşturulup e-posta ile gönderilir.
+                </p>
                 {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>}
               </div>
               
@@ -166,7 +169,7 @@ export default function AddSpecialistModal({ onAdded }: { onAdded: () => void })
                 <button 
                   type="submit" 
                   disabled={loading || !isValid} 
-                  className="px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600 disabled:opacity-50"
+                  className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90 disabled:opacity-50"
                 >
                   {loading ? "Kaydediliyor..." : "Kaydet"}
                 </button>

@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { hash } from "bcryptjs";
+import { sendEmail } from "@/lib/mailer";
+import { generatePassword } from "@/lib/utils";
 
 // ✅ TÜM UZMANLARI GETİR
 export async function GET() {
@@ -90,6 +92,9 @@ export async function POST(req: Request) {
     }
 
     // Uzman oluştur
+    const rawPassword = data.password || generatePassword(10);
+    const passwordHash = await hash(rawPassword, 10);
+
     const user = await prisma.user.create({
       data: {
         email: data.email,
@@ -98,7 +103,7 @@ export async function POST(req: Request) {
         address: data.address ?? null,
         role: "UZMAN",
         clinicId: clinicId,
-        passwordHash: await hash(data.password || "123456", 10),
+        passwordHash: passwordHash,
         specialist: {
           create: {
             clinicId: clinicId,
@@ -113,6 +118,31 @@ export async function POST(req: Request) {
       },
       include: { specialist: true },
     });
+
+    // E-posta gönder (şifre otomatik oluşturulduysa veya kullanıcıya bildirmek için)
+    try {
+      await sendEmail(
+        user.email,
+        "Klinik Hesabınız Oluşturuldu",
+        `
+        <div style="font-family: Arial, sans-serif; color: #333;">
+          <h2>Merhaba ${user.name},</h2>
+          <p>Klinik yönetim sistemine uzman hesabınız tanımlanmıştır.</p>
+          <p>Giriş bilgileriniz aşağıdadır:</p>
+          <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <p><strong>E-posta:</strong> ${user.email}</p>
+            <p><strong>Şifre:</strong> ${rawPassword}</p>
+          </div>
+          <p>Giriş yaptıktan sonra şifrenizi değiştirmenizi öneririz.</p>
+          <p>İyi çalışmalar.</p>
+        </div>
+        `
+      );
+      console.log("📧 Uzman şifre maili gönderildi:", user.email);
+    } catch (mailError) {
+      console.error("❌ Mail gönderilemedi:", mailError);
+      // Mail hatası işlemi durdurmamalı
+    }
 
     console.log("✅ Yeni uzman oluşturuldu:", user.email);
     return NextResponse.json(user, { status: 201 });

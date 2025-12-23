@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { compare } from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: process.env.DEMO_AUTH === "true" ? undefined : PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -35,9 +35,23 @@ export const authOptions: NextAuthOptions = {
             name: user.name,
             role: user.role,
             clinicId: user.clinicId,
-            image: user.image
-          };
+            image: user.image,
+          } as any;
         } catch (error) {
+          if (process.env.DEMO_AUTH === "true") {
+            const demos = [
+              { email: "superadmin@clinic.dev", password: "SuperAdmin1234", id: "demo-superadmin", role: "SUPER_ADMIN", clinicId: "default-clinic", name: "Super Admin" },
+              { email: "admin@admin.com", password: "Admin1234", id: "demo-admin", role: "ADMIN", clinicId: "default-clinic", name: "Sistem Admin" },
+              { email: "uzman1@clinic.dev", password: "Uzman1234", id: "demo-uzman1", role: "UZMAN", clinicId: "default-clinic", name: "Demo Uzman 1" },
+              { email: "uzman2@clinic.dev", password: "Uzman1234", id: "demo-uzman2", role: "UZMAN", clinicId: "default-clinic", name: "Demo Uzman 2" },
+              { email: "uzman3@clinic.dev", password: "Uzman1234", id: "demo-uzman3", role: "UZMAN", clinicId: "default-clinic", name: "Demo Uzman 3" },
+              { email: "uzman4@clinic.dev", password: "Uzman1234", id: "demo-uzman4", role: "UZMAN", clinicId: "default-clinic", name: "Demo Uzman 4" },
+            ];
+            const found = demos.find(d => d.email === credentials.email && d.password === credentials.password);
+            if (found) {
+              return { id: found.id, email: found.email, name: found.name, role: found.role as any, clinicId: found.clinicId, image: null, clinics: [] } as any;
+            }
+          }
           console.error('Auth error:', error);
           throw error;
         }
@@ -51,6 +65,10 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.role = user.role;
         token.clinicId = user.clinicId; // ✅ clinicId'yi token'a ekledik
+        const mappings = await prisma.userClinic.findMany({ where: { userId: user.id }, select: { clinicId: true } });
+        const ids = mappings.map((m: { clinicId: string }) => m.clinicId);
+        if (!ids.includes(user.clinicId)) ids.push(user.clinicId);
+        (token as any).clinicIds = ids;
       }
       return token;
     },
@@ -58,8 +76,9 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (token) {
         session.user.id = token.id as string;
-        session.user.role = token.role as "ADMIN" | "ASISTAN" | "UZMAN";
-        session.user.clinicId = token.clinicId as string; // ✅ token'dan session'a aktardık
+        session.user.role = token.role as "SUPER_ADMIN" | "ADMIN" | "ASISTAN" | "UZMAN" | "PERSONEL";
+        session.user.clinicId = token.clinicId as string;
+        session.user.clinicIds = (token as any).clinicIds as string[];
       }
       return session;
     },

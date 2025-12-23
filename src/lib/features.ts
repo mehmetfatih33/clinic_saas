@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/authz";
 import { redirect } from "next/navigation";
 
-export type FeatureSlug = "core-clinic" | "room-tracking" | "accounting";
+export type FeatureSlug = "core-clinic" | "room-tracking" | "accounting" | "multi-user";
 
 export async function getCurrentClinicPlan(clinicId: string) {
   const cp = await prisma.clinicPlan.findFirst({
@@ -15,8 +15,10 @@ export async function getCurrentClinicPlan(clinicId: string) {
 }
 
 export async function hasFeature(clinicId: string, featureSlug: FeatureSlug): Promise<boolean> {
+  const session = await requireSession();
+  if (featureSlug !== "multi-user" && (session.user.role === "ADMIN" || session.user.role === "ASISTAN")) return true;
   const current = await getCurrentClinicPlan(clinicId);
-  if (!current?.plan) return false;
+  if (!current?.plan) return featureSlug === "room-tracking";
   const slug = current.plan.slug as string;
   if (slug === "full") return true;
   if (slug === "pro" && featureSlug === "room-tracking") return true;

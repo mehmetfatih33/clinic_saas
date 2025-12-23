@@ -9,6 +9,13 @@ async function main() {
     create: { id: "default-clinic", name: "Default Klinik", slug: "default" },
   });
 
+  const clinic2 = await prisma.clinic.upsert({
+    where: { slug: "branch-2" },
+    update: { name: "Şube 2", slug: "branch-2" },
+    create: { name: "Şube 2", slug: "branch-2" },
+  });
+
+
   await prisma.user.upsert({
     where: { email: "admin@admin.com" },
     update: {},
@@ -18,6 +25,18 @@ async function main() {
       role: "ADMIN",
       clinicId: clinic.id,
       passwordHash: await hash("Admin1234", 10),
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { email: "superadmin@clinic.dev" },
+    update: {},
+    create: {
+      email: "superadmin@clinic.dev",
+      name: "Super Admin",
+      role: "SUPER_ADMIN",
+      clinicId: clinic.id,
+      passwordHash: await hash("SuperAdmin1234", 10),
     },
   });
 
@@ -156,6 +175,34 @@ async function main() {
       { clinicId: clinic.id, patientId: hasta1.id, specialistId: uzman1.id, amount: amount2, specialistCut: amount2 * share, clinicCut: amount2 * (1 - share) },
     ],
   });
+
+  // Map admin & super admin to multiple clinics
+  const admin = await prisma.user.findUnique({ where: { email: "admin@admin.com" } });
+  const superAdmin = await prisma.user.findUnique({ where: { email: "superadmin@clinic.dev" } });
+  if (admin) {
+    await prisma.userClinic.upsert({
+      where: { userId_clinicId: { userId: admin.id, clinicId: clinic.id } },
+      update: {},
+      create: { userId: admin.id, clinicId: clinic.id, role: "ADMIN" },
+    });
+    await prisma.userClinic.upsert({
+      where: { userId_clinicId: { userId: admin.id, clinicId: clinic2.id } },
+      update: {},
+      create: { userId: admin.id, clinicId: clinic2.id, role: "ADMIN" },
+    });
+  }
+  if (superAdmin) {
+    await prisma.userClinic.upsert({
+      where: { userId_clinicId: { userId: superAdmin.id, clinicId: clinic.id } },
+      update: {},
+      create: { userId: superAdmin.id, clinicId: clinic.id, role: "SUPER_ADMIN" },
+    });
+    await prisma.userClinic.upsert({
+      where: { userId_clinicId: { userId: superAdmin.id, clinicId: clinic2.id } },
+      update: {},
+      create: { userId: superAdmin.id, clinicId: clinic2.id, role: "SUPER_ADMIN" },
+    });
+  }
 }
 
 main().catch((e) => { console.error(e); process.exit(1); }).finally(async () => { await prisma.$disconnect(); });

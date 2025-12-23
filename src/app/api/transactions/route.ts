@@ -74,10 +74,12 @@ export async function GET(req: Request) {
     const session = await requireSession();
     const { searchParams } = new URL(req.url);
     const patientId = searchParams.get("patientId");
+    const specialistId = searchParams.get("specialistId");
     const type = searchParams.get("type");
 
     const where: any = { clinicId: session.user.clinicId };
     if (patientId) where.patientId = patientId;
+    if (specialistId) where.specialistId = specialistId;
     if (type && ["INCOME", "EXPENSE"].includes(type)) where.type = type;
 
     const list = await prisma.transaction.findMany({

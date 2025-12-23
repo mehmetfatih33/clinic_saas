@@ -47,19 +47,20 @@ export async function GET(req: Request) {
         orderBy: { name: "asc" },
       });
       const available = allRooms.filter((r: { id: string }) => !busy.has(r.id));
-      return NextResponse.json(available);
+      return NextResponse.json({ ok: true, items: available ?? [] }, { status: 200 });
     } else {
       const rooms = await prisma.room.findMany({
         where,
         orderBy: { name: "asc" },
       });
-      return NextResponse.json(rooms);
+      return NextResponse.json({ ok: true, items: rooms ?? [] }, { status: 200 });
     }
   } catch (err: any) {
     if (err?.message === "UNAUTHORIZED") {
       return NextResponse.json({ message: "Giriş gerekli" }, { status: 401 });
     }
-    return NextResponse.json({ message: "Odalar yüklenemedi" }, { status: 500 });
+    console.error("❌ Rooms Error:", err);
+    return NextResponse.json({ ok: false, error: String(err), items: [] }, { status: 200 });
   }
 }
 

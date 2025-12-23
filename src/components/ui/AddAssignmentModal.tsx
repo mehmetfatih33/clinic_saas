@@ -39,7 +39,8 @@ export default function AddAssignmentModal({ onAdded }: { onAdded: () => void })
     queryKey: ["patients"],
     queryFn: async () => {
       const res = await fetch("/api/patients");
-      return res.json();
+      const json = await res.json();
+      return Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
     },
   });
 
@@ -47,7 +48,8 @@ export default function AddAssignmentModal({ onAdded }: { onAdded: () => void })
     queryKey: ["specialists"],
     queryFn: async () => {
       const res = await fetch("/api/specialists");
-      return res.json();
+      const json = await res.json();
+      return Array.isArray(json) ? json : (Array.isArray(json?.experts) ? json.experts : []);
     },
   });
 
@@ -109,7 +111,7 @@ export default function AddAssignmentModal({ onAdded }: { onAdded: () => void })
     <>
       <motion.button
         onClick={() => setOpen(true)}
-        className="rounded-xl bg-gradient-to-r from-violet-500 to-purple-500 text-white px-4 py-2 font-medium shadow hover:opacity-90"
+        className="rounded-xl bg-primary text-white px-4 py-2 font-medium shadow hover:bg-primary/90"
         whileHover={{ scale: 1.05 }}
       >
         + Yeni Atama

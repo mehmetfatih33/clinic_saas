@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { ToastProvider, useToast } from "@/components/ui/ToastProvider";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Edit2 } from "lucide-react";
+import EditStaffModal from "@/components/ui/EditStaffModal";
 
 type WorkDayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 type WorkSchedule = Record<WorkDayKey, { closed: boolean; open?: string; close?: string }>;
@@ -83,7 +85,9 @@ export default function SettingsPage() {
         const e = await res.json().catch(() => ({}));
         throw new Error(e.message || "Odalar yüklenemedi");
       }
-      return res.json();
+      const json = await res.json();
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+      return items;
     },
     enabled: roomFeatureAllowed,
   });
@@ -128,10 +132,14 @@ export default function SettingsPage() {
     queryFn: async () => {
       const res = await fetch("/api/staff");
       if (!res.ok) throw new Error("Çalışanlar yüklenemedi");
-      return res.json();
+      const json = await res.json();
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+      return items;
     }
   });
   const [staffForm, setStaffForm] = useState({ name: "", email: "", phone: "", password: "", role: "ASISTAN" });
+  const [editingStaff, setEditingStaff] = useState<any>(null);
+
   const addStaff = useMutation({
     mutationFn: async () => {
       const res = await fetch("/api/staff", {
@@ -244,7 +252,7 @@ export default function SettingsPage() {
                 </Button>
 
                 <div className="mt-4 space-y-2">
-                  {staff.length === 0 ? (
+                  {!Array.isArray(staff) || staff.length === 0 ? (
                     <p className="text-gray-500">Kayıtlı çalışan yok</p>
                   ) : (
                     staff.map((s: any) => (
@@ -253,6 +261,9 @@ export default function SettingsPage() {
                           <p className="font-medium">{s.name}</p>
                           <p className="text-sm text-gray-500">{s.email} • {s.role}</p>
                         </div>
+                        <Button variant="ghost" size="icon" onClick={() => setEditingStaff(s)}>
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     ))
                   )}
@@ -261,6 +272,14 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
         </Tabs>
+        
+        {editingStaff && (
+          <EditStaffModal 
+            user={editingStaff} 
+            onClose={() => setEditingStaff(null)} 
+            onSuccess={() => qc.invalidateQueries({ queryKey: ["staff"] })} 
+          />
+        )}
       </div>
     </ToastProvider>
   );

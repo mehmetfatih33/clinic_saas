@@ -30,22 +30,40 @@ function PaymentsTab() {
     specialist: { name: string };
   };
   const [search, setSearch] = useState("");
-  const { data, isLoading } = useQuery<Payment[]>({
+  const { data, isLoading, error } = useQuery<{ items: Payment[] } | { items: any[] } | any>({
     queryKey: ["payments"],
     queryFn: async () => {
       const res = await fetch("/api/payments/list");
-      if (!res.ok) throw new Error("Ödemeler yüklenemedi");
-      return res.json();
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(json.message || json.error || `Sunucu hatası: ${res.status}`);
+      }
+
+      if (json.ok === false) {
+        throw new Error(json.message || json.error || "Veri alınamadı");
+      }
+
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+      return { items };
     },
   });
   if (isLoading) return <p className="p-6 text-gray-500">Yükleniyor...</p>;
-  const filtered = (data || []).filter((p) =>
-    p.patient.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.specialist.name.toLowerCase().includes(search.toLowerCase())
+  if (error) return (
+    <div className="p-6 bg-red-50 text-red-600 rounded-lg">
+      <p className="font-semibold">Ödemeler yüklenemedi</p>
+      <p className="text-sm mt-1">Detay: {(error as Error).message}</p>
+      <Button variant="outline" size="sm" className="mt-4" onClick={() => window.location.reload()}>Sayfayı Yenile</Button>
+    </div>
   );
-  const totalAmount = filtered.reduce((sum, p) => sum + p.amount, 0);
-  const totalSpecialistCut = filtered.reduce((sum, p) => sum + p.specialistCut, 0);
-  const totalClinicCut = filtered.reduce((sum, p) => sum + p.clinicCut, 0);
+  const list: Payment[] = Array.isArray(data?.items) ? (data.items as Payment[]) : [];
+  const filtered: Payment[] = list.filter((p: Payment) =>
+    (p.patient?.name?.toLowerCase().includes(search.toLowerCase()) || false) ||
+    (p.specialist?.name?.toLowerCase().includes(search.toLowerCase()) || false)
+  );
+  const totalAmount = filtered.reduce((sum: number, p: Payment) => sum + p.amount, 0);
+  const totalSpecialistCut = filtered.reduce((sum: number, p: Payment) => sum + p.specialistCut, 0);
+  const totalClinicCut = filtered.reduce((sum: number, p: Payment) => sum + p.clinicCut, 0);
   return (
     <div className="space-y-6">
       <Card>
@@ -76,11 +94,11 @@ function PaymentsTab() {
                 {filtered.length === 0 ? (
                   <tr><td colSpan={7} className="text-center py-8 text-gray-400">{search ? "Arama sonucu bulunamadı" : "Henüz ödeme kaydı yok"}</td></tr>
                 ) : (
-                  filtered.map((p) => (
+                  filtered.map((p: Payment) => (
                     <tr key={p.id} className="border-t">
                       <td className="px-4 py-2">{new Date(p.createdAt).toLocaleDateString("tr-TR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
-                      <td className="px-4 py-2">{p.patient.name}</td>
-                      <td className="px-4 py-2">{p.specialist.name}</td>
+                      <td className="px-4 py-2">{p.patient?.name || "-"}</td>
+                      <td className="px-4 py-2">{p.specialist?.name || "-"}</td>
                       <td className="px-4 py-2 text-green-700 font-medium">{p.amount.toLocaleString("tr-TR")} ₺</td>
                       <td className="px-4 py-2">{p.specialistCut.toLocaleString("tr-TR")} ₺</td>
                       <td className="px-4 py-2">{p.clinicCut.toLocaleString("tr-TR")} ₺</td>
@@ -94,6 +112,56 @@ function PaymentsTab() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function AccrualsTab() {
+  const { data: accruals = [], isLoading, error } = useQuery({
+    queryKey: ["accruals"],
+    queryFn: async () => {
+      const res = await fetch("/api/finance/accruals");
+      if (!res.ok) throw new Error("Hakediş verileri yüklenemedi");
+      return res.json();
+    },
+  });
+
+  if (isLoading) return <p className="p-6 text-gray-500">Yükleniyor...</p>;
+  if (error) return <p className="p-6 text-red-600">Veriler yüklenemedi.</p>;
+
+  return (
+    <Card>
+      <CardHeader>
+        <h2 className="text-xl font-semibold">Hakediş Durumu</h2>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm border">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="text-left px-4 py-2">Uzman</th>
+                <th className="text-left px-4 py-2">Toplam Hakediş</th>
+                <th className="text-left px-4 py-2">Ödenen</th>
+                <th className="text-left px-4 py-2">Bakiye (Ödenecek)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {accruals.length === 0 ? (
+                <tr><td colSpan={4} className="text-center py-8 text-gray-400">Veri yok</td></tr>
+              ) : (
+                accruals.map((item: any) => (
+                  <tr key={item.specialistId} className="border-t">
+                    <td className="px-4 py-2 font-medium">{item.specialistName}</td>
+                    <td className="px-4 py-2 text-blue-700 font-medium">{item.accrued.toLocaleString("tr-TR")} ₺</td>
+                    <td className="px-4 py-2 text-green-700 font-medium">{item.paidOut.toLocaleString("tr-TR")} ₺</td>
+                    <td className="px-4 py-2 text-red-700 font-bold">{item.balance.toLocaleString("tr-TR")} ₺</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -111,7 +179,7 @@ export default function FinancePage() {
 
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const { data: transactions = [], isLoading } = useQuery<any[]>({
+  const { data: transactionsResp, isLoading: isLoadingTx, error: errorTx } = useQuery<any>({
     queryKey: ["cash-transactions", fromDate, toDate],
     queryFn: async () => {
       const sp = new URLSearchParams();
@@ -119,46 +187,61 @@ export default function FinancePage() {
       if (toDate) sp.set("to", toDate);
       const res = await fetch(`/api/cash-transactions?${sp.toString()}`);
       if (!res.ok) throw new Error("Kasa hareketleri yüklenemedi");
-      return res.json();
+      const json = await res.json().catch(() => ({}));
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+      return { items };
     },
     enabled: !isUzman,
   });
+  const transactions = Array.isArray(transactionsResp?.items) ? transactionsResp.items : [];
 
-  const { data: payments = [] } = useQuery<any[]>({
+  const { data: paymentsSummaryResp } = useQuery<any>({
     queryKey: ["payments-summary"],
     queryFn: async () => {
       const res = await fetch("/api/payments/list");
-      if (!res.ok) return [];
-      return res.json();
+      if (!res.ok) return { items: [] };
+      const json = await res.json().catch(() => ({}));
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+      return { items };
     },
   });
+  const paymentsSummary = Array.isArray(paymentsSummaryResp?.items) ? paymentsSummaryResp.items : [];
 
-  const { data: patients = [] } = useQuery<any[]>({
+  const { data: patientsResp } = useQuery<any>({
     queryKey: ["patients"],
     queryFn: async () => {
       const res = await fetch("/api/patients");
       if (!res.ok) return [];
-      return res.json();
+      const json = await res.json().catch(() => ({}));
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+      return items;
     },
   });
+  const patients = Array.isArray(patientsResp) ? patientsResp : [];
 
-  const { data: specialists = [] } = useQuery<any[]>({
+  const { data: specialistsResp } = useQuery<any>({
     queryKey: ["specialists"],
     queryFn: async () => {
       const res = await fetch("/api/specialists");
       if (!res.ok) return [];
-      return res.json();
+      const json = await res.json().catch(() => ({}));
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : (Array.isArray(json?.experts) ? json.experts : []));
+      return items;
     },
   });
+  const specialists = Array.isArray(specialistsResp) ? specialistsResp : [];
 
-  const { data: categories = [] } = useQuery<any[]>({
+  const { data: categoriesResp } = useQuery<any>({
     queryKey: ["finance-categories"],
     queryFn: async () => {
       const res = await fetch("/api/finance/categories");
-      if (!res.ok) return [];
-      return res.json();
+      if (!res.ok) return { items: [] };
+      const json = await res.json().catch(() => ({}));
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+      return { items };
     },
   });
+  const categories = Array.isArray(categoriesResp?.items) ? categoriesResp.items : [];
   const [categoryId, setCategoryId] = useState("");
 
   const [dateStr, setDateStr] = useState("");
@@ -216,12 +299,17 @@ export default function FinancePage() {
         <Tabs defaultValue="payments">
           <TabsList>
             <TabsTrigger value="payments">Ödemeler</TabsTrigger>
+            <TabsTrigger value="accruals">Hakedişler</TabsTrigger>
             {!isUzman && <TabsTrigger value="accounting">Kasa / Muhasebe</TabsTrigger>}
             {!isUzman && <TabsTrigger value="plans">Planlı Ödemeler</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="payments">
             <PaymentsTab />
+          </TabsContent>
+
+          <TabsContent value="accruals">
+            <AccrualsTab />
           </TabsContent>
 
           {!isUzman && (
@@ -330,9 +418,13 @@ export default function FinancePage() {
             <h2 className="text-lg font-semibold">Kasa Hareketleri</h2>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
+            {isLoadingTx && (
               <p className="text-gray-500">Yükleniyor...</p>
-            ) : (
+            )}
+            {errorTx && !isLoadingTx && (
+              <p className="text-red-600">Kasa hareketleri yüklenemedi. Lütfen daha sonra tekrar deneyin.</p>
+            )}
+            {!isLoadingTx && !errorTx && (
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm border">
                   <thead>
@@ -347,7 +439,7 @@ export default function FinancePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {transactions.length === 0 ? (
+                    {(!Array.isArray(transactions) || transactions.length === 0) ? (
                       <tr><td colSpan={6} className="text-center py-8 text-gray-400">Henüz işlem yok</td></tr>
                     ) : (
                       transactions.map((t) => (
@@ -415,7 +507,9 @@ function PlansTab() {
     queryFn: async () => {
       const res = await fetch("/api/patients");
       if (!res.ok) return [];
-      return res.json();
+      const json = await res.json().catch(() => ({}));
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+      return items;
     },
   });
   const { data: specialists = [] } = useQuery<any[]>({
@@ -423,7 +517,9 @@ function PlansTab() {
     queryFn: async () => {
       const res = await fetch("/api/specialists");
       if (!res.ok) return [];
-      return res.json();
+      const json = await res.json().catch(() => ({}));
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : (Array.isArray(json?.experts) ? json.experts : []));
+      return items;
     },
   });
   const createPlan = useMutation({
@@ -478,7 +574,7 @@ function PlansTab() {
               <Select value={patientId} onValueChange={setPatientId}>
                 <SelectTrigger><SelectValue placeholder="Hasta seçin" /></SelectTrigger>
                 <SelectContent>
-                  {patients.map((p: any) => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
+                    {Array.isArray(patients) && patients.map((p: any) => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>
@@ -489,7 +585,7 @@ function PlansTab() {
               <Select value={specialistId} onValueChange={setSpecialistId}>
                 <SelectTrigger><SelectValue placeholder="Uzman seçin" /></SelectTrigger>
                 <SelectContent>
-                  {specialists.map((s: any) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}
+                    {Array.isArray(specialists) && specialists.map((s: any) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>

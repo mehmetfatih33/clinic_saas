@@ -18,6 +18,17 @@ export default function DashboardPage() {
   const router = useRouter();
   const isUzman = session?.user?.role === "UZMAN";
   const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "ASISTAN";
+
+  useEffect(() => {
+    if (session?.user?.role === "SUPER_ADMIN") {
+      router.replace("/admin");
+    }
+  }, [session, router]);
+
+  if (session?.user?.role === "SUPER_ADMIN") {
+    return <div className="p-6">Yönlendiriliyor...</div>;
+  }
+
   const [range, setRange] = useState<"ALL" | "1M" | "6M" | "1Y">("1M");
   const [notifiedIds, setNotifiedIds] = useState<Set<string>>(new Set());
 
@@ -27,8 +38,9 @@ export default function DashboardPage() {
     queryFn: async () => {
       const res = await fetch("/api/appointments");
       if (!res.ok) return [];
-      const appointments = await res.json();
-      return appointments.slice(0, 3); // Get latest 3
+      const json = await res.json();
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+      return items.slice(0, 3);
     },
     enabled: !!session?.user
   });
@@ -39,8 +51,9 @@ export default function DashboardPage() {
     queryFn: async () => {
       const res = await fetch("/api/patients");
       if (!res.ok) return [];
-      const patients = await res.json();
-      return patients.slice(0, 5); // Get latest 5 patients
+      const json = await res.json();
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+      return items.slice(0, 5);
     },
     enabled: !!session?.user
   });
@@ -51,8 +64,9 @@ export default function DashboardPage() {
     queryFn: async () => {
       const res = await fetch("/api/payments");
       if (!res.ok) return [];
-      const payments = await res.json();
-      return payments.slice(0, 3); // Get latest 3 payments
+      const json = await res.json();
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+      return items.slice(0, 3);
     },
     enabled: !!session?.user
   });
@@ -62,7 +76,9 @@ export default function DashboardPage() {
     queryFn: async () => {
       const res = await fetch("/api/appointments");
       if (!res.ok) return [];
-      return res.json();
+      const json = await res.json();
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : (Array.isArray(json?.experts) ? json.experts : []));
+      return items;
     },
     enabled: isAdmin
   });
@@ -72,7 +88,9 @@ export default function DashboardPage() {
     queryFn: async () => {
       const res = await fetch("/api/patients");
       if (!res.ok) return [];
-      return res.json();
+      const json = await res.json();
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+      return items;
     },
     enabled: isAdmin
   });
@@ -84,7 +102,9 @@ export default function DashboardPage() {
     queryFn: async () => {
       const res = await fetch("/api/rooms");
       if (!res.ok) return [];
-      return res.json();
+      const json = await res.json();
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+      return items;
     },
     enabled: isAdmin
   });
@@ -95,19 +115,27 @@ export default function DashboardPage() {
       const date = new Date().toISOString();
       const res = await fetch(`/api/rooms?date=${encodeURIComponent(date)}&duration=60`);
       if (!res.ok) return [];
-      return res.json();
+      const json = await res.json();
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+      return items;
     },
     enabled: isAdmin
   });
 
   const { data: transactions = [] } = useQuery({
-    queryKey: ["transactions-dashboard"],
+    queryKey: ["transactions-dashboard", session?.user?.role],
     queryFn: async () => {
-      const res = await fetch("/api/transactions");
+      let url = "/api/transactions";
+      if (isUzman && session?.user?.id) {
+        url += `?specialistId=${session.user.id}`;
+      }
+      const res = await fetch(url);
       if (!res.ok) return [];
-      return res.json();
+      const json = await res.json();
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+      return items;
     },
-    enabled: isAdmin,
+    enabled: !!session?.user && (isAdmin || isUzman),
   });
 
   const { data: specialists = [] } = useQuery({
@@ -115,7 +143,9 @@ export default function DashboardPage() {
     queryFn: async () => {
       const res = await fetch("/api/specialists");
       if (!res.ok) return [];
-      return res.json();
+      const json = await res.json();
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : (Array.isArray(json?.experts) ? json.experts : []));
+      return items;
     },
     enabled: isAdmin,
   });
@@ -160,7 +190,8 @@ export default function DashboardPage() {
         const sp = new URLSearchParams({ from: now.toISOString(), to: to.toISOString() });
         const res = await fetch(`/api/appointments?${sp.toString()}`);
         if (!res.ok) return;
-        const upcoming = await res.json();
+        const json = await res.json();
+        const upcoming = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
         upcoming.forEach((a: any) => {
           if (!notifiedIds.has(a.id)) {
             const t = new Date(a.date).toLocaleString("tr-TR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -237,18 +268,18 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-semibold">Hoş geldiniz, {session?.user?.name}</h1>
             <div className="flex gap-2">
-              <button onClick={() => router.push("/appointments/create")} className="px-3 py-2 rounded-md bg-green-500 text-white text-sm">+ Randevu Ekle</button>
+              <button onClick={() => router.push("/appointments/create")} className="px-3 py-2 rounded-md bg-primary hover:bg-primary/90 text-white text-sm">+ Randevu Ekle</button>
               <div className="px-3 py-2 rounded-md bg-blue-50 text-blue-600 text-sm">{moment().startOf("month").format("DD MMM")} - {moment().endOf("month").format("DD MMM")}</div>
             </div>
           </div>
           <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
             <div className="rounded-xl bg-white p-5 border">
               <div className="flex items-center justify-between">
-                <div className="text-3xl font-bold">{allAppointments.filter((a: any) => moment(a.date).isSame(moment(), "day") && a.status !== "CANCELED").length}</div>
+                <div className="text-3xl font-bold">{Array.isArray(allAppointments) ? allAppointments.filter((a: any) => moment(a.date).isSame(moment(), "day") && a.status !== "CANCELED").length : 0}</div>
                 <Calendar className="text-blue-600" />
               </div>
               <div className="text-sm text-gray-500 mt-1">Bugünkü Randevular</div>
-              <div className="text-xs text-gray-400 mt-2">Toplam: {allAppointments.length}</div>
+              <div className="text-xs text-gray-400 mt-2">Toplam: {Array.isArray(allAppointments) ? allAppointments.length : 0}</div>
             </div>
             <div className="rounded-xl bg-white p-5 border">
               <div className="flex items-center justify-between">
@@ -256,7 +287,7 @@ export default function DashboardPage() {
                 <Users className="text-purple-600" />
               </div>
               <div className="text-sm text-gray-500 mt-1">Toplam Hastalar</div>
-              <div className="text-xs text-gray-400 mt-2">Son 30 gün: {allPatients.filter((p: any) => moment(p.createdAt).isAfter(moment().subtract(30, "days"))).length}</div>
+              <div className="text-xs text-gray-400 mt-2">Son 30 gün: {Array.isArray(allPatients) ? allPatients.filter((p: any) => moment(p.createdAt).isAfter(moment().subtract(30, "days"))).length : 0}</div>
             </div>
             <div className="rounded-xl bg-white p-5 border">
               <div className="flex items-center justify-between">
@@ -355,7 +386,7 @@ export default function DashboardPage() {
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-600">
             <button 
               onClick={() => router.push('/patients')}
-              className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+              className="text-sm text-primary hover:text-primary/80 font-medium"
             >
               Tüm hastaları görüntüle →
             </button>
@@ -426,7 +457,7 @@ export default function DashboardPage() {
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-600">
             <button 
               onClick={() => router.push('/appointments')}
-              className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+              className="text-sm text-primary hover:text-primary/80 font-medium"
             >
               Tüm randevuları görüntüle →
             </button>
@@ -474,7 +505,7 @@ export default function DashboardPage() {
               {/* Recent patients */}
               {activityFeed.slice(0, 2).map((patient: any, index: number) => (
                 <div key={`patient-${patient.id}`} className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                  <div className="w-2 h-2 bg-primary rounded-full mt-2"></div>
                   <div>
                     <p className="text-sm text-gray-900 dark:text-white">
                       <span className="font-medium">{patient.name}</span> {isUzman ? 'hastam oldu' : 'hasta eklendi'}.
@@ -526,7 +557,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Bottom Donut Chart */}
-      {isAdmin && (
+      {(isAdmin || isUzman) && (
         <div className="rounded-2xl bg-white p-6 border mt-6">
           <div className="flex items-center justify-between mb-4">
             <div>

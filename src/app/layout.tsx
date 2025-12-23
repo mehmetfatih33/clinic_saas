@@ -1,8 +1,24 @@
 import "./globals.css";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { ClientProviders } from "@/components/providers/ClientProviders";
 
-export const metadata: Metadata = { title: "Clinic SaaS", description: "Multi-tenant clinic app" };
+export const metadata: Metadata = { 
+  title: "Cliterapi", 
+  description: "Cliterapi - Klinik Yönetim Sistemi",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Cliterapi",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#FFFFFF",
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -20,7 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body className="min-h-screen bg-white text-gray-900" suppressHydrationWarning={true}>
+      <body className="min-h-screen bg-background text-foreground" suppressHydrationWarning={true}>
         <ClientProviders>
           {children}
         </ClientProviders>

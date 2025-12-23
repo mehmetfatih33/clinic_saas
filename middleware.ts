@@ -13,6 +13,9 @@ export async function middleware(req: NextRequest) {
   
   // If no token, redirect to login
   if (!token) {
+    if (req.nextUrl.pathname.startsWith('/api/')) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
@@ -59,5 +62,6 @@ export const config = {
     "/reports/:path*",
     "/clinics/:path*",
     "/finance/:path*",
+    "/api/:path*",
   ],
 };

@@ -31,7 +31,10 @@ export default function NewPatientPage() {
   useEffect(() => {
     fetch('/api/specialists')
       .then(res => res.json())
-      .then(setSpecialists)
+      .then(data => {
+        const list = Array.isArray(data) ? data : (Array.isArray(data?.experts) ? data.experts : []);
+        setSpecialists(list);
+      })
       .catch(() => toast.error('Uzman listesi yüklenemedi.'));
   }, []);
 

@@ -75,7 +75,7 @@ export default function ExportsPage() {
           <motion.button
             onClick={handleExport}
             disabled={loading}
-            className="mt-8 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white py-3 font-medium shadow hover:opacity-90 active:scale-95 transition-all"
+            className="mt-8 flex items-center justify-center gap-2 rounded-xl bg-primary text-white py-3 font-medium shadow hover:bg-primary/90 active:scale-95 transition-all"
             whileHover={{ scale: 1.02 }}
           >
             {loading ? (

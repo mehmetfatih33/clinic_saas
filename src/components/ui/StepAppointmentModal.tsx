@@ -74,7 +74,8 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
       if (!form.selectedDate) return [];
       const res = await fetch(`/api/appointments?date=${form.selectedDate}`);
       if (!res.ok) return [];
-      const appointments = await res.json();
+      const json = await res.json();
+      const appointments = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
       return appointments.filter((apt: any) => {
         const aptDate = new Date(apt.date).toISOString().split('T')[0];
         return aptDate === form.selectedDate;
@@ -123,25 +124,27 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
   };
 
   // Fetch patients for dropdown
-  const { data: patients = [] } = useQuery({
+  const { data: patients = [], isLoading: patientsLoading, isError: patientsError } = useQuery({
     queryKey: ["patients"],
     queryFn: async () => {
       const res = await fetch("/api/patients");
       if (!res.ok) throw new Error("Hastalar yüklenemedi");
-      return res.json();
+      const json = await res.json();
+      return Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
     },
     enabled: open,
   });
 
-  // Fetch specialists for dropdown - only show after patient is selected
+  // Fetch specialists for dropdown
   const { data: specialists = [] } = useQuery({
     queryKey: ["specialists"],
     queryFn: async () => {
       const res = await fetch("/api/specialists");
       if (!res.ok) throw new Error("Uzmanlar yüklenemedi");
-      return res.json();
+      const json = await res.json();
+      return Array.isArray(json) ? json : (Array.isArray(json?.experts) ? json.experts : []);
     },
-    enabled: open && form.patientId !== "",
+    enabled: open,
   });
   const { data: rooms = [] } = useQuery({
     queryKey: ["rooms", form.date, form.duration],
@@ -150,7 +153,8 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
       const qs = `?date=${encodeURIComponent(form.date)}&duration=${form.duration}`;
       const res = await fetch(`/api/rooms${qs}`);
       if (!res.ok) throw new Error("Odalar yüklenemedi");
-      return res.json();
+      const json = await res.json();
+      return Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
     },
     enabled: !!form.date,
   });
@@ -296,25 +300,25 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                currentStep >= 1 ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-500"
+                currentStep >= 1 ? "bg-primary text-white" : "bg-gray-200 text-gray-500"
               }`}>
                 👨‍⚕️
               </div>
-              <div className={`w-6 h-0.5 ${currentStep >= 2 ? "bg-blue-500" : "bg-gray-200"}`}></div>
+              <div className={`w-6 h-0.5 ${currentStep >= 2 ? "bg-primary" : "bg-gray-200"}`}></div>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                currentStep >= 2 ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-500"
+                currentStep >= 2 ? "bg-primary text-white" : "bg-gray-200 text-gray-500"
               }`}>
                 <User size={16} />
               </div>
-              <div className={`w-6 h-0.5 ${currentStep >= 3 ? "bg-blue-500" : "bg-gray-200"}`}></div>
+              <div className={`w-6 h-0.5 ${currentStep >= 3 ? "bg-primary" : "bg-gray-200"}`}></div>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                currentStep >= 3 ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-500"
+                currentStep >= 3 ? "bg-primary text-white" : "bg-gray-200 text-gray-500"
               }`}>
                 <Calendar size={16} />
               </div>
-              <div className={`w-6 h-0.5 ${currentStep >= 4 ? "bg-blue-500" : "bg-gray-200"}`}></div>
+              <div className={`w-6 h-0.5 ${currentStep >= 4 ? "bg-primary" : "bg-gray-200"}`}></div>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                currentStep >= 4 ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-500"
+                currentStep >= 4 ? "bg-primary text-white" : "bg-gray-200 text-gray-500"
               }`}>
                 <Clock size={16} />
               </div>
@@ -375,6 +379,11 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
                     <SelectValue placeholder="Hasta seçin..." className="text-gray-900 dark:text-white" />
                   </SelectTrigger>
                   <SelectContent className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
+                    {patientsLoading && <SelectItem value="loading" disabled>Yükleniyor...</SelectItem>}
+                    {patientsError && <SelectItem value="error" disabled>Hata oluştu</SelectItem>}
+                    {!patientsLoading && !patientsError && patients.length === 0 && (
+                      <SelectItem value="empty" disabled>Kayıtlı hasta yok</SelectItem>
+                    )}
                     {patients.map((patient: any) => (
                       <SelectItem 
                         key={patient.id} 
@@ -438,9 +447,9 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
                             disabled={!isAvailable}
                             className={`p-2 rounded-lg text-sm font-medium transition-all ${
                               isSelected
-                                ? "bg-blue-500 text-white border-2 border-blue-600"
+                                ? "bg-primary text-white border-2 border-primary"
                                 : isAvailable
-                                ? "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 hover:bg-blue-100 dark:hover:bg-blue-800"
+                                ? "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 hover:bg-primary/10 dark:hover:bg-primary/20"
                                 : "bg-red-100 text-red-500 border border-red-300 cursor-not-allowed opacity-50"
                             }`}
                           >

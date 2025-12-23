@@ -5,10 +5,16 @@ import { requireSession } from "@/lib/authz";
 export async function GET(req: Request) {
   try {
     const session = await requireSession();
+    const isUzman = session.user.role === "UZMAN";
     const { searchParams } = new URL(req.url);
     const monthStr = searchParams.get("month");
     const yearStr = searchParams.get("year");
-    const specialistIdFilter = searchParams.get("specialistId");
+    let specialistIdFilter = searchParams.get("specialistId");
+
+    // If user is UZMAN, force filter to their own ID
+    if (isUzman) {
+      specialistIdFilter = session.user.id;
+    }
 
     const wherePayments: any = { clinicId: session.user.clinicId };
     if (specialistIdFilter) wherePayments.specialistId = specialistIdFilter;
@@ -61,17 +67,26 @@ export async function GET(req: Request) {
       payoutMap.set(g.targetUserId, g._sum.amount || 0)
     );
 
-    const items = paymentGroups.map((g: { specialistId: string; _sum: { specialistCut: number | null } }) => {
-      const paidOut = payoutMap.get(g.specialistId) || 0;
-      const accrued = g._sum.specialistCut || 0;
+    const paymentMap = new Map<string, number>();
+    paymentGroups.forEach((g: { specialistId: string; _sum: { specialistCut: number | null } }) =>
+      paymentMap.set(g.specialistId, g._sum.specialistCut || 0)
+    );
+
+    const items = specialists.map((s) => {
+      const accrued = paymentMap.get(s.id) || 0;
+      const paidOut = payoutMap.get(s.id) || 0;
+      
+      // Skip if no activity
+      if (accrued === 0 && paidOut === 0) return null;
+
       return {
-        specialistId: g.specialistId,
-        specialistName: specialists.find((s) => s.id === g.specialistId)?.name || "",
+        specialistId: s.id,
+        specialistName: s.name,
         accrued,
         paidOut,
         balance: accrued - paidOut,
       };
-    });
+    }).filter(Boolean);
 
     return NextResponse.json(items);
   } catch (err: any) {

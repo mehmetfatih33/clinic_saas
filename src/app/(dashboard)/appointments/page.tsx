@@ -54,22 +54,25 @@ export default function AppointmentCalendar() {
     }
   }, [session]);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["appointments"],
     queryFn: async () => {
       const res = await fetch("/api/appointments");
       if (!res.ok) throw new Error("Randevular yüklenemedi");
-      return res.json();
+      const json = await res.json().catch(() => ({}));
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+      return { items };
     },
   });
 
   // Uzmanlar sadece kendi randevularını görebilir
+  const allAppointments = Array.isArray(data?.items) ? data.items : [];
   const filteredData = session?.user?.role === "UZMAN" 
-    ? data?.filter((a: any) => a.specialistId === session.user.id) 
-    : data;
+    ? allAppointments.filter((a: any) => a?.specialistId === session?.user?.id) 
+    : allAppointments;
 
   const events =
-    filteredData?.map((a: any) => ({
+    (Array.isArray(filteredData) ? filteredData : []).map((a: any) => ({
       id: a.id,
       title: `${a.patient.name} • ${a.specialist.name}`,
       start: new Date(a.date),
@@ -181,8 +184,8 @@ export default function AppointmentCalendar() {
       return {
         className,
         style: {
-          backgroundColor: '#2563eb',
-          borderColor: '#1d4ed8',
+          backgroundColor: '#399D9F',
+          borderColor: '#2A7A7B',
           color: 'white',
           borderRadius: '6px',
           borderWidth: '2px',
@@ -211,7 +214,8 @@ export default function AppointmentCalendar() {
         const sp = new URLSearchParams({ from: now.toISOString(), to: to.toISOString() });
         const res = await fetch(`/api/appointments?${sp.toString()}`);
         if (!res.ok) return;
-        const upcoming = await res.json();
+        const json = await res.json();
+        const upcoming = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
         upcoming.forEach((a: any) => {
           if (!notifiedIds.has(a.id)) {
             const t = moment(a.date).format("DD.MM.YYYY HH:mm");
@@ -281,34 +285,43 @@ export default function AppointmentCalendar() {
   });
 
   // Dropdown verileri
-  const { data: patients = [] } = useQuery({
+  const { data: patientsResp } = useQuery({
     queryKey: ["patients"],
     queryFn: async () => {
       const res = await fetch("/api/patients");
       if (!res.ok) throw new Error("Hastalar yüklenemedi");
-      return res.json();
+      const json = await res.json().catch(() => ({}));
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+      return items;
     },
   });
+  const patients = Array.isArray(patientsResp) ? patientsResp : [];
 
-  const { data: specialists = [] } = useQuery({
+  const { data: specialistsResp } = useQuery({
     queryKey: ["specialists"],
     queryFn: async () => {
       const res = await fetch("/api/specialists");
       if (!res.ok) throw new Error("Uzmanlar yüklenemedi");
-      return res.json();
+      const json = await res.json().catch(() => ({}));
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : (Array.isArray(json?.experts) ? json.experts : []));
+      return items;
     },
   });
+  const specialists = Array.isArray(specialistsResp) ? specialistsResp : [];
 
-  const { data: rooms = [] } = useQuery({
+  const { data: roomsResp } = useQuery({
     queryKey: ["rooms", selectedDate, selectedTime, form.duration],
     queryFn: async () => {
       const dateParam = selectedDate ? `${selectedDate}T${selectedTime || "00:00"}` : "";
       const qs = selectedDate ? `?date=${encodeURIComponent(dateParam)}&duration=${form.duration}` : "";
       const res = await fetch(`/api/rooms${qs}`);
       if (!res.ok) throw new Error("Odalar yüklenemedi");
-      return res.json();
+      const json = await res.json().catch(() => ({}));
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+      return { items };
     },
   });
+  const rooms = Array.isArray(roomsResp?.items) ? roomsResp.items : [];
 
   const { data: availability = [], refetch: refetchAvailability } = useQuery<any[]>({
     queryKey: ["availability", form.specialistId, selectedDate, form.duration],
@@ -317,7 +330,8 @@ export default function AppointmentCalendar() {
       const sp = new URLSearchParams({ specialistId: form.specialistId, date: selectedDate, duration: String(form.duration) });
       const res = await fetch(`/api/availability?${sp.toString()}`);
       if (!res.ok) throw new Error("Uygunluk yüklenemedi");
-      return res.json();
+      const json = await res.json();
+      return Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
     },
     enabled: !!form.specialistId && !!selectedDate,
   });
@@ -406,7 +420,7 @@ export default function AppointmentCalendar() {
                 <Button className="w-full" onClick={() => setShowCreate(true)}>+ Yeni Randevu</Button>
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-green-500"></span><span>Yeni Etkinlik Planlama</span></div>
-                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-blue-500"></span><span>Toplantı</span></div>
+                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-primary"></span><span>Toplantı</span></div>
                   <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-amber-500"></span><span>Raporlama</span></div>
                   <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-red-500"></span><span>Yeni Tema</span></div>
                 </div>
@@ -498,7 +512,7 @@ export default function AppointmentCalendar() {
                                 }}
                                 className={`p-2 rounded text-sm border transition ${
                                   isBusy ? "bg-red-100 text-red-600 border-red-300 cursor-not-allowed" :
-                                  isSelected ? "bg-blue-500 text-white border-blue-600" : "bg-gray-100 border-gray-300 hover:bg-blue-100"
+                                  isSelected ? "bg-primary text-white border-primary" : "bg-gray-100 border-gray-300 hover:bg-primary/10"
                                 }`}
                               >
                                 {slot.time}
@@ -541,11 +555,17 @@ export default function AppointmentCalendar() {
               </Card>
             </div>
           )}
-          {isLoading ? (
+          {isLoading && (
             <div className="flex items-center justify-center h-96">
               <p className="text-gray-500">Yükleniyor...</p>
             </div>
-          ) : (
+          )}
+          {error && !isLoading && (
+            <div className="flex items-center justify-center h-96">
+              <p className="text-red-600">Randevular yüklenemedi. Lütfen daha sonra tekrar deneyin.</p>
+            </div>
+          )}
+          {!isLoading && !error && (
           <>
             <div className="mb-4 flex flex-wrap gap-2 text-sm">
               <div className="flex items-center space-x-2">
@@ -565,6 +585,7 @@ export default function AppointmentCalendar() {
                 <span className="text-gray-600 dark:text-gray-300">Geçmiş</span>
               </div>
             </div>
+            {(Array.isArray(events) && events.length > 0) ? (
             <DnDCalendar
               localizer={localizer}
               events={events}
@@ -643,6 +664,11 @@ export default function AppointmentCalendar() {
                   `${moment(start).format("HH:mm")} - ${moment(end).format("HH:mm")}`,
               }}
             />
+            ) : (
+              <div className="flex items-center justify-center h-64">
+                <p className="text-gray-500">Henüz randevu bulunmuyor.</p>
+              </div>
+            )}
           </>
           )}
             </div>

@@ -36,7 +36,7 @@ export async function GET(req: Request) {
     const open = ws?.[key]?.open || "08:00";
     const close = ws?.[key]?.close || "18:00";
     const closed = ws?.[key]?.closed === true;
-    if (closed) return NextResponse.json([]);
+    if (closed) return NextResponse.json({ ok: true, items: [] }, { status: 200 });
 
     const [oh, om] = open.split(":").map((x: string) => parseInt(x, 10));
     const [ch, cm] = close.split(":").map((x: string) => parseInt(x, 10));
@@ -95,10 +95,9 @@ export async function GET(req: Request) {
       slots.push({ time, status: overlapsAppointment || overlapsTimeOff ? "busy" : "free" });
     }
 
-    return NextResponse.json(slots);
+    return NextResponse.json({ ok: true, items: slots ?? [] }, { status: 200 });
   } catch (err: any) {
     console.error("❌ Availability Error:", err);
-    return NextResponse.json({ message: "Uygunluk hesaplanırken hata oluştu" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: String(err), items: [] }, { status: 200 });
   }
 }
-

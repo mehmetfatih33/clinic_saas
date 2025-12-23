@@ -472,7 +472,8 @@ export default function PatientDetailsPage({ params }: PatientDetailsProps) {
     queryFn: async () => {
       const res = await fetch("/api/specialists");
       if (!res.ok) throw new Error("Uzmanlar yüklenemedi");
-      return res.json();
+      const json = await res.json();
+      return Array.isArray(json) ? json : (Array.isArray(json?.experts) ? json.experts : []);
     },
     enabled: canEdit,
   });

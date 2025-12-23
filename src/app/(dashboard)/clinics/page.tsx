@@ -1,15 +1,11 @@
 "use client";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 
 export default function ClinicsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Klinikler</h1>
-        <Button className="bg-emerald-500 hover:bg-emerald-600">
-          + Yeni Klinik
-        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

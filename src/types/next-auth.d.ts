@@ -7,8 +7,9 @@ declare module "next-auth" {
       name?: string | null
       email?: string | null
       image?: string | null
-      role: "ADMIN" | "ASISTAN" | "UZMAN" | "PERSONEL"
+      role: "SUPER_ADMIN" | "ADMIN" | "ASISTAN" | "UZMAN" | "PERSONEL"
       clinicId: string
+      clinicIds: string[]
     }
   }
 
@@ -17,7 +18,8 @@ declare module "next-auth" {
     name?: string | null
     email?: string | null
     image?: string | null
-    role: "ADMIN" | "ASISTAN" | "UZMAN" | "PERSONEL"
+    role: "SUPER_ADMIN" | "ADMIN" | "ASISTAN" | "UZMAN" | "PERSONEL"
     clinicId: string
+    clinics?: { clinicId: string }[]
   }
 }

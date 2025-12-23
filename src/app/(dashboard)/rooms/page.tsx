@@ -5,10 +5,12 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToastProvider, useToast } from "@/components/ui/ToastProvider";
+import { useSession } from "next-auth/react";
 
 export default function RoomsPage() {
   const qc = useQueryClient();
   const { show } = useToast();
+  const { data: session } = useSession();
 
   const { data: plan } = useQuery<{ slug?: string; features?: string[] } | null>({
     queryKey: ["plan"],
@@ -18,9 +20,10 @@ export default function RoomsPage() {
       return res.json();
     },
   });
-  const roomFeatureAllowed = !!(plan && ((plan.slug === "full") || (Array.isArray(plan.features) && plan.features.includes("room-tracking")) || (plan.slug === "")));
+  const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "ASISTAN";
+  const roomFeatureAllowed = isAdmin || !!(plan && ((plan.slug === "full") || (Array.isArray(plan.features) && plan.features.includes("room-tracking")) || (plan.slug === "")));
 
-  const { data: rooms = [], isLoading } = useQuery<any[]>({
+  const { data: roomsResp, isLoading, error } = useQuery<any>({
     queryKey: ["rooms", "all"],
     queryFn: async () => {
       const res = await fetch("/api/rooms?all=1");
@@ -28,10 +31,13 @@ export default function RoomsPage() {
         const e = await res.json().catch(() => ({}));
         throw new Error(e.message || "Odalar yüklenemedi");
       }
-      return res.json();
+      const json = await res.json().catch(() => ({}));
+      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+      return { items };
     },
     enabled: roomFeatureAllowed,
   });
+  const rooms = Array.isArray(roomsResp?.items) ? roomsResp.items : [];
 
   const [newRoomName, setNewRoomName] = useState("");
   const addRoom = useMutation({
@@ -107,11 +113,15 @@ export default function RoomsPage() {
                 <h2 className="text-lg font-semibold">Odalar</h2>
               </CardHeader>
               <CardContent>
-                {isLoading ? (
+                {isLoading && (
                   <p className="text-gray-500">Yükleniyor...</p>
-                ) : (
+                )}
+                {error && !isLoading && (
+                  <p className="text-red-600">Odalar yüklenemedi. Lütfen daha sonra tekrar deneyin.</p>
+                )}
+                {!isLoading && !error && (
                   <div className="space-y-2">
-                    {rooms.length === 0 ? (
+                    {(!Array.isArray(rooms) || rooms.length === 0) ? (
                       <p className="text-gray-500">Aktif oda yok</p>
                     ) : (
                       rooms.map((r: any) => (
@@ -133,4 +143,3 @@ export default function RoomsPage() {
     </ToastProvider>
   );
 }
-

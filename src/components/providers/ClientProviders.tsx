@@ -4,7 +4,7 @@ import { ReactNode } from "react";
 
 export function ClientProviders({ children }: { children: ReactNode }) {
   return (
-    <SessionProvider>
+    <SessionProvider refetchInterval={0} refetchOnWindowFocus={false}>
       {children}
     </SessionProvider>
   );

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { hash } from "bcryptjs";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -165,9 +166,23 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     // Optionally update User fields
     const userUpdate: any = {};
     if (body.name !== undefined) userUpdate.name = body.name;
-    if (body.email !== undefined) userUpdate.email = body.email;
+    
+    if (body.email !== undefined) {
+      if (body.email !== specialist.email) {
+         const existing = await prisma.user.findUnique({ where: { email: body.email } });
+         if (existing) {
+           return NextResponse.json({ message: "Bu e-posta adresi zaten kullanımda" }, { status: 409 });
+         }
+      }
+      userUpdate.email = body.email;
+    }
+
     if (body.phone !== undefined) userUpdate.phone = body.phone;
     if (body.address !== undefined) userUpdate.address = body.address ?? null;
+    
+    if (body.password && body.password.length >= 6) {
+      userUpdate.passwordHash = await hash(body.password, 10);
+    }
 
     let updatedUser = specialist;
     if (Object.keys(userUpdate).length > 0) {

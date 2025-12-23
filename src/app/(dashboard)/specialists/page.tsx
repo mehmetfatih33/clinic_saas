@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import AddSpecialistModal from "@/components/ui/AddSpecialistModal";
+import EditSpecialistModal from "@/components/ui/EditSpecialistModal";
 import { ToastProvider, useToast } from "@/components/ui/ToastProvider";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -157,6 +158,10 @@ function EditableField({
 }
 
 export default function SpecialistsPage() {
+  const [editingSpecialist, setEditingSpecialist] = useState<any>(null);
+  const { data: session } = useSession();
+  const canEdit = session?.user?.role === "ADMIN" || session?.user?.role === "ASISTAN";
+
   const { data, refetch, isLoading, error } = useQuery<any>({
     queryKey: ["specialists"],
     queryFn: async () => {
@@ -166,10 +171,10 @@ export default function SpecialistsPage() {
         const experts = Array.isArray(json)
           ? json
           : (Array.isArray(json?.experts) ? json.experts : []);
-        return { experts };
+        return experts;
       } catch (e) {
         console.error("❌ specialists fetch error", e);
-        return { experts: [] };
+        return [];
       }
     },
   });
@@ -194,7 +199,7 @@ export default function SpecialistsPage() {
         )}
         {!isLoading && !error && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {(Array.isArray(data?.experts) ? data.experts : []).map((specialist: Specialist) => (
+            {(Array.isArray(data) ? data : []).map((specialist: Specialist) => (
               <Card
                 key={specialist.id}
                 className="hover:shadow-lg transition-shadow group"
@@ -207,6 +212,11 @@ export default function SpecialistsPage() {
                         {specialist.email}
                       </p>
                     </div>
+                    {canEdit && (
+                      <Button variant="ghost" size="icon" onClick={() => setEditingSpecialist(specialist)}>
+                        <Edit2 className="h-4 w-4 text-gray-500" />
+                      </Button>
+                    )}
                   </div>
                 </CardHeader>
 
@@ -257,6 +267,14 @@ export default function SpecialistsPage() {
             Henüz uzman eklenmemiş. İlk uzmanı eklemek için &quot;+ Yeni Uzman&quot;
             butonunu kullanın.
           </div>
+        )}
+
+        {editingSpecialist && (
+          <EditSpecialistModal 
+            specialist={editingSpecialist}
+            onClose={() => setEditingSpecialist(null)}
+            onSuccess={() => refetch()}
+          />
         )}
       </div>
     </ToastProvider>

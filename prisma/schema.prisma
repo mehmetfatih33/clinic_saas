@@ -35,6 +35,7 @@ model Clinic {
   cashTransactions   CashTransaction[]
   rooms              Room[]
   clinicPlans        ClinicPlan[]
+  userClinics        UserClinic[]
 }
 
 model User {
@@ -68,6 +69,7 @@ model User {
   financeTransactionsCreated  FinanceTransaction[] @relation("FinanceTransactionCreatedBy")
   payrollEntries              PayrollEntry[]       @relation("PayrollStaff")
   cashTransactions            CashTransaction[]    @relation("CashTransactionSpecialist")
+  clinics                     UserClinic[]
 }
 
 model SpecialistProfile {
@@ -304,6 +306,7 @@ enum Role {
   ASISTAN
   UZMAN
   PERSONEL
+  SUPER_ADMIN
 }
 
 enum AppointmentStatus {
@@ -614,4 +617,18 @@ model CashTransaction {
   @@index([type])
   @@index([category])
   @@index([cashCategoryId])
+}
+
+model UserClinic {
+  id        String  @id @default(cuid())
+  userId    String
+  clinicId  String
+  role      Role    @default(ADMIN)
+  createdAt DateTime @default(now())
+
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clinic  Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clinicId])
+  @@index([clinicId])
 }

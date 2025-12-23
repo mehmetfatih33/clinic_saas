@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { LogOut, Users, Calendar, ClipboardList, FileText, BarChart3, Building2, CreditCard, Settings, DoorOpen, Wallet, Receipt, CheckSquare } from "lucide-react";
 import Link from "next/link";
+import NextImage from "next/image";
 import { Button } from "@/components/ui/button";
 import clsx from "clsx";
 
@@ -33,6 +34,8 @@ export function Sidebar() {
 
   // Define navigation items with role-based visibility
   const allNavItems = [
+    { name: "Dashboard", href: "/admin", icon: BarChart3, roles: ["SUPER_ADMIN"] },
+    { name: "Klinikler", href: "/admin/clinics", icon: Building2, roles: ["SUPER_ADMIN"] },
     { name: "Panel", href: "/dashboard", icon: BarChart3, roles: ["ADMIN", "ASISTAN", "UZMAN"] },
     { name: "Hastalar", href: "/patients", icon: Users, roles: ["ADMIN", "ASISTAN", "UZMAN"] },
     { name: "Randevular", href: "/appointments", icon: Calendar, roles: ["ADMIN", "ASISTAN", "UZMAN"] },
@@ -61,7 +64,9 @@ export function Sidebar() {
     <aside className="sidebar hidden md:flex flex-col justify-between h-full w-64 bg-white border-r p-4">
       {/* ÜST MENÜ */}
       <div>
-        <h2 className="text-lg font-semibold text-[#4A6CF7] mb-6">Klinik Paneli</h2>
+        <div className="mb-6 px-2">
+          <NextImage src="/logo.png" alt="Cliterapi" width={150} height={50} priority className="h-auto w-auto" />
+        </div>
         <nav className="space-y-2">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -74,8 +79,8 @@ export function Sidebar() {
                 className={clsx(
                   "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all",
                   isActive
-                    ? "bg-[#4A6CF7] text-white shadow"
-                    : "text-gray-600 hover:bg-gray-100"
+                    ? "bg-primary text-primary-foreground shadow"
+                    : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
                 )}
                 onClick={() => {
                   if (typeof window !== 'undefined' && window.innerWidth < 768) {

@@ -23,7 +23,8 @@ export default function NewSpecialistNotePage() {
     queryFn: async () => {
       const res = await fetch("/api/patients");
       if (!res.ok) throw new Error("Hastalar yüklenemedi");
-      return res.json();
+      const json = await res.json();
+      return Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
     },
   });
 

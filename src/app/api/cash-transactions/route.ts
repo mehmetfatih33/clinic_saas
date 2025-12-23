@@ -77,21 +77,45 @@ export async function POST(req: Request) {
       if (catFlow !== type) return NextResponse.json({ message: "Kategori tipi uyumsuz" }, { status: 400 });
       cashCategoryId = cat.id;
       enumCategory = cat.type === "INCOME" ? "DIGER_GELIR" : "DIGER_GIDER";
+    } else if (type === "OUT" && specialistId) {
+      // If no specific category selected but specialist is selected for expense, default to UZMAN_ODEME
+      enumCategory = "UZMAN_ODEME";
     }
-    const created = await prisma.cashTransaction.create({
-      data: {
-        clinicId: session.user.clinicId,
-        type: type as any,
-        category: enumCategory ?? (type === "IN" ? ("DIGER_GELIR" as any) : ("DIGER_GIDER" as any)),
-        amount,
-        patientId: patientId || null,
-        specialistId: specialistId || null,
-        cashCategoryId,
-        description,
-        date: date ? new Date(date) : undefined,
-      },
+
+    const result = await prisma.$transaction(async (tx) => {
+      const created = await tx.cashTransaction.create({
+        data: {
+          clinicId: session.user.clinicId,
+          type: type as any,
+          category: enumCategory ?? (type === "IN" ? ("DIGER_GELIR" as any) : ("DIGER_GIDER" as any)),
+          amount,
+          patientId: patientId || null,
+          specialistId: specialistId || null,
+          cashCategoryId,
+          description,
+          date: date ? new Date(date) : undefined,
+        },
+      });
+
+      // If this is an expense for a specialist, create a Payout record to update their balance
+      if (type === "OUT" && specialistId) {
+        await tx.payout.create({
+          data: {
+            clinicId: session.user.clinicId,
+            targetUserId: specialistId,
+            type: "SPECIALIST",
+            category: "OTHER",
+            amount,
+            note: description || "Finans modülünden ödeme",
+            date: date ? new Date(date) : undefined,
+          },
+        });
+      }
+
+      return created;
     });
-    return NextResponse.json(created, { status: 201 });
+
+    return NextResponse.json(result, { status: 201 });
   } catch (err: any) {
     console.error("CashTransactions POST error:", err);
     return NextResponse.json({ message: "Sunucu hatası" }, { status: 500 });

@@ -2,7 +2,6 @@ import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { demoStorage } from '@/lib/demo-storage';
 
 export async function GET() {
   try {
@@ -30,10 +29,10 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json(patients);
+    return NextResponse.json({ ok: true, items: patients ?? [] }, { status: 200 });
   } catch (error) {
     console.error('Error fetching patients:', error);
-    return NextResponse.json([]);
+    return NextResponse.json({ ok: false, error: String(error), items: [] }, { status: 200 });
   }
 }
 

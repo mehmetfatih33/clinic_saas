@@ -6,7 +6,7 @@ export async function GET() {
   try {
     const session = await requireSession();
     const cp = await getCurrentClinicPlan(session.user.clinicId);
-    if (!cp) return NextResponse.json({ message: "Aktif plan bulunamadı" }, { status: 404 });
+    if (!cp) return NextResponse.json({ slug: "", features: [] }, { status: 200 });
     return NextResponse.json({ slug: cp.plan.slug, features: cp.plan.features });
   } catch (err: any) {
     if (err?.message === "UNAUTHORIZED") {

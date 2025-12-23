@@ -3,6 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import { Search } from "lucide-react";
 
 interface Patient {
   id: string;
@@ -13,6 +16,7 @@ interface Patient {
 }
 
 export default function PatientsPage() {
+  const [search, setSearch] = useState("");
   const { data, refetch, isLoading, error } = useQuery<Patient[]>({
     queryKey: ["patients"],
     queryFn: async () => {
@@ -21,14 +25,23 @@ export default function PatientsPage() {
         throw new Error('Hastalar yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.');
       }
       const result = await res.json();
-      // Ensure we always return an array
-      return Array.isArray(result) ? result : [];
+      const items = Array.isArray(result) ? result : (Array.isArray(result?.items) ? result.items : []);
+      return items;
     },
     staleTime: 0,
     refetchOnMount: "always",
     refetchOnReconnect: "always",
     refetchOnWindowFocus: true,
   });
+
+  const filteredPatients = (Array.isArray(data) ? data : []).filter((patient) => {
+    const term = search.toLowerCase();
+    return (
+      patient.name?.toLowerCase().includes(term) ||
+      patient.phone?.includes(term) ||
+      patient.email?.toLowerCase().includes(term)
+    );
+  }) || [];
 
   return (
     <ToastProvider>
@@ -38,6 +51,16 @@ export default function PatientsPage() {
           <Link href="/patients/new">
             <Button>Yeni Hasta Ekle</Button>
           </Link>
+        </div>
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input
+            placeholder="Hasta adı, telefon veya e-posta ile ara..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10 max-w-sm"
+          />
         </div>
 
         {isLoading ? (
@@ -50,28 +73,44 @@ export default function PatientsPage() {
                   <th className="text-left p-3">Ad Soyad</th>
                   <th className="text-left p-3">Telefon</th>
                   <th className="text-left p-3">E-posta</th>
-                  <th className="p-3">Kayıt Tarihi</th>
+                  <th className="text-left p-3">Kayıt Tarihi</th>
+                  <th className="text-left p-3">İşlemler</th>
                 </tr>
               </thead>
               <tbody>
-                {(data || []).map((p: Patient) => (
-                  <tr key={p.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-sky-50/40 dark:hover:bg-gray-800">
-                    <td className="p-3">
-                      <Link href={`/patients/${p.id}`} className="text-blue-600 hover:text-blue-800 font-medium">
-                        {p.name}
-                      </Link>
-                    </td>
-                    <td className="p-3">{p.phone || "-"}</td>
-                    <td className="p-3">{p.email || "-"}</td>
-                    <td className="p-3 text-center text-gray-500 text-xs">{new Date(p.createdAt).toLocaleDateString()}</td>
-                  </tr>
-                ))}
-                {(!data || data.length === 0) && (
+                {filteredPatients.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="p-8 text-center text-gray-500">
-                      Henüz hasta kaydı bulunmuyor. Yeni hasta ekleyerek başlayın.
+                    <td colSpan={5} className="p-4 text-center text-gray-500">
+                      {search ? "Sonuç bulunamadı." : "Kayıtlı hasta yok."}
                     </td>
                   </tr>
+                ) : (
+                  filteredPatients.map((patient) => (
+                    <tr
+                      key={patient.id}
+                      className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      <td className="p-3 font-medium text-gray-900 dark:text-white">
+                        {patient.name}
+                      </td>
+                      <td className="p-3 text-gray-600 dark:text-gray-400">
+                        {patient.phone || "-"}
+                      </td>
+                      <td className="p-3 text-gray-600 dark:text-gray-400">
+                        {patient.email || "-"}
+                      </td>
+                      <td className="p-3 text-gray-600 dark:text-gray-400">
+                        {new Date(patient.createdAt).toLocaleDateString("tr-TR")}
+                      </td>
+                      <td className="p-3">
+                        <Link href={`/patients/${patient.id}`}>
+                          <Button variant="outline" size="sm">
+                            Detay
+                          </Button>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>

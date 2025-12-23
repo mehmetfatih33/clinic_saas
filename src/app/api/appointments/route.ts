@@ -137,9 +137,9 @@ export async function GET(req: Request) {
       orderBy: { date: "asc" },
     });
 
-    return NextResponse.json(appointments);
+    return NextResponse.json({ ok: true, items: appointments ?? [] }, { status: 200 });
   } catch (error: any) {
     console.error("❌ Appointment Fetch Error:", error);
-    return NextResponse.json({ message: "Randevular yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin." }, { status: 500 });
+    return NextResponse.json({ ok: false, error: String(error), items: [] }, { status: 200 });
   }
 }

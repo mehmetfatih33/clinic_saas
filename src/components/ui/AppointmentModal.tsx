@@ -44,7 +44,7 @@ export default function AppointmentModal({ onAdded }: { onAdded: () => void }) {
     <>
       <motion.button
         onClick={() => setOpen(true)}
-        className="rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white px-4 py-2 font-medium shadow hover:opacity-90"
+        className="rounded-xl bg-primary text-white px-4 py-2 font-medium shadow hover:bg-primary/90"
         whileHover={{ scale: 1.05 }}
       >
         + Yeni Randevu
@@ -67,7 +67,7 @@ export default function AppointmentModal({ onAdded }: { onAdded: () => void }) {
                 <button type="button" onClick={() => setOpen(false)} className="px-3 py-2 text-gray-600">
                   İptal
                 </button>
-                <button type="submit" disabled={loading} className="px-4 py-2 bg-sky-500 text-white rounded">
+                <button type="submit" disabled={loading} className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded">
                   {loading ? "Kaydediliyor..." : "Kaydet"}
                 </button>
               </div>
