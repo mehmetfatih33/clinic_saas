@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ClientProviders } from "@/components/providers/ClientProviders";
 
 export const metadata: Metadata = { title: "Cliterapi", description: "Cliterapi - Klinik Yönetim Sistemi" };
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ClientProviders>
           {children}
         </ClientProviders>
+        <SpeedInsights />
       </body>
     </html>
   );
