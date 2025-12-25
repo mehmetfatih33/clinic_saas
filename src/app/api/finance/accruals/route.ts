@@ -72,7 +72,7 @@ export async function GET(req: Request) {
       paymentMap.set(g.specialistId, g._sum.specialistCut || 0)
     );
 
-    const items = specialists.map((s) => {
+    const items = specialists.map((s: any) => {
       const accrued = paymentMap.get(s.id) || 0;
       const paidOut = payoutMap.get(s.id) || 0;
       

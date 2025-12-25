@@ -80,7 +80,7 @@ export default async function Page({ searchParams }: { searchParams?: Promise<Re
                   <td colSpan={5} className="text-center py-8 text-gray-400">Henüz klinik oluşturulmamış</td>
                 </tr>
               ) : (
-                clinics.map((c) => {
+                clinics.map((c: any) => {
                   const adminEmail = c.users?.[0]?.email || "-";
                   const latestPlan = c.clinicPlans?.[0] || null;
                   const activePlan = latestPlan?.plan?.name || "-";

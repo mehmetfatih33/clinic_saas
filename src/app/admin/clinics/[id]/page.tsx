@@ -102,7 +102,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
               <label className="text-sm text-gray-700">Yeni Plan</label>
               <select name="planId" className="mt-1 w-full rounded border px-3 py-2" required defaultValue={activePlan?.id || ""}>
                 <option value="" disabled>Plan seçin</option>
-                {plans.map((p) => (
+                {plans.map((p: any) => (
                   <option key={p.id} value={p.id}>{p.name} ({p.slug})</option>
                 ))}
               </select>

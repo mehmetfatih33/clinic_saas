@@ -120,7 +120,7 @@ export default async function Page({ searchParams }: { searchParams?: Promise<Re
                     <td colSpan={6} className="text-center py-8 text-gray-400">Henüz plan oluşturulmamış</td>
                   </tr>
                 ) : (
-                  plans.map((p) => (
+                  plans.map((p: any) => (
                     <tr key={p.id} className="border-t">
                       <td className="px-4 py-2">{p.name}</td>
                       <td className="px-4 py-2">{p.slug}</td>
@@ -151,7 +151,7 @@ export default async function Page({ searchParams }: { searchParams?: Promise<Re
         {isSuperAdmin && editId && (
           <div className="rounded-lg border bg-card text-card-foreground p-6">
             <h2 className="text-lg font-semibold">Plan Düzenle</h2>
-            {plans.filter((x) => x.id === editId).map((p) => (
+            {plans.filter((x: any) => x.id === editId).map((p: any) => (
               <form key={p.id} action={updatePlanAction} className="mt-4 space-y-3">
                 <input type="hidden" name="id" defaultValue={p.id} />
                 <div>

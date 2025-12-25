@@ -32,7 +32,7 @@ async function createClinicWithPlanAction(formData: FormData) {
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       const passwordHash = await hash(adminPassword, 10);
       const clinic = await tx.clinic.create({ data: { name: clinicName, slug: clinicSlug } });
       await tx.user.create({
@@ -117,7 +117,7 @@ export default async function Page({ searchParams }: { searchParams?: Promise<Re
               <label className="text-sm text-gray-700">Plan</label>
               <select name="planId" className="mt-1 w-full rounded border px-3 py-2" required defaultValue="">
                 <option value="" disabled>Plan seçin</option>
-                {plans.map((p) => (
+                {plans.map((p: any) => (
                   <option key={p.id} value={p.id}>{p.name} ({p.slug})</option>
                 ))}
               </select>

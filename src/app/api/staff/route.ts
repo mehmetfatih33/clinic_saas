@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, ensureRole } from "@/lib/authz";
 import { hash } from "bcryptjs";
-import type { Role } from "@prisma/client";
+import { Role } from "@prisma/client";
 import { sendEmail } from "@/lib/mailer";
 import { generatePassword } from "@/lib/utils";
 

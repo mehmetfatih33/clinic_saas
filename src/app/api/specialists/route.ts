@@ -32,7 +32,7 @@ export async function GET() {
       if (g.assignedToId) patientCountMap.set(g.assignedToId, g._count._all || 0);
     });
 
-    const data = specialists.map((sp) => ({
+    const data = specialists.map((sp: any) => ({
       id: sp.id,
       name: sp.name,
       email: sp.email,
