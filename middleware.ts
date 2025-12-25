@@ -24,16 +24,16 @@ export async function middleware(req: NextRequest) {
 
   // Define role-based access rules
   const accessRules = {
-    '/specialists': ['ADMIN'],
-    '/assignments': ['ADMIN'], 
-    '/exports': ['ADMIN'],
-    '/reports': ['ADMIN'],
-    '/clinics': ['ADMIN'],
-    '/finance': ['ADMIN', 'ASISTAN', 'UZMAN'],
-    '/appointments': ['ADMIN', 'ASISTAN', 'UZMAN'],
-    '/notes': ['ADMIN', 'UZMAN'],
-    '/patients': ['ADMIN', 'ASISTAN', 'UZMAN'],
-    '/dashboard': ['ADMIN', 'ASISTAN', 'UZMAN']
+    '/specialists': ['SUPER_ADMIN', 'ADMIN'],
+    '/assignments': ['SUPER_ADMIN', 'ADMIN'], 
+    '/exports': ['SUPER_ADMIN', 'ADMIN'],
+    '/reports': ['SUPER_ADMIN', 'ADMIN'],
+    '/clinics': ['SUPER_ADMIN', 'ADMIN'],
+    '/finance': ['SUPER_ADMIN', 'ADMIN', 'ASISTAN', 'UZMAN'],
+    '/appointments': ['SUPER_ADMIN', 'ADMIN', 'ASISTAN', 'UZMAN', 'PERSONEL'],
+    '/notes': ['SUPER_ADMIN', 'ADMIN', 'UZMAN'],
+    '/patients': ['SUPER_ADMIN', 'ADMIN', 'ASISTAN', 'UZMAN', 'PERSONEL'],
+    '/dashboard': ['SUPER_ADMIN', 'ADMIN', 'ASISTAN', 'UZMAN', 'PERSONEL']
   };
 
   // Check if the current path requires role-based access control
