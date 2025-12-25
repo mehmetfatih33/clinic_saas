@@ -77,6 +77,27 @@ export async function POST(req: Request) {
         createdById: session.user.id,
       },
     });
+
+    try {
+      await prisma.auditLog.create({
+        data: {
+          clinicId: session.user.clinicId,
+          actorId: session.user.id,
+          action: "TRANSACTION_CREATE",
+          entity: "FinanceTransaction",
+          entityId: created.id,
+          meta: {
+            type,
+            amount,
+            description,
+            message: `${type === "INCOME" ? "Gelir" : "Gider"} kaydedildi: ${amount.toLocaleString("tr-TR")} ₺`,
+          },
+        },
+      });
+    } catch (e) {
+      console.error("Log error:", e);
+    }
+
     return NextResponse.json(created, { status: 201 });
   } catch (err: any) {
     console.error("FinanceTransaction POST error:", err);

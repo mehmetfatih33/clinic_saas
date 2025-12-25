@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ListTree, Building2, Users, LogOut } from "lucide-react";
+import { LayoutDashboard, ListTree, Building2, Users, LogOut, ClipboardList } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import clsx from "clsx";
@@ -13,6 +13,7 @@ export default function AdminSidebar() {
     { label: "Planlar", href: "/admin/plans", icon: ListTree },
     { label: "Klinikler", href: "/admin/clinics", icon: Building2 },
     { label: "Kullanıcılar", href: "/admin/users", icon: Users },
+    { label: "Loglar", href: "/logs", icon: ClipboardList },
   ];
 
   return (

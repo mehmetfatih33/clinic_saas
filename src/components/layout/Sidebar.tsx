@@ -43,7 +43,7 @@ export function Sidebar() {
     { name: "Atamalar", href: "/assignments", icon: FileText, roles: ["ADMIN"] },
     { name: "Odalar", href: "/rooms", icon: DoorOpen, roles: ["ADMIN", "ASISTAN"], requiredFeature: "room-tracking" },
     { name: "Finans", href: "/finance", icon: CreditCard, roles: ["ADMIN", "ASISTAN", "UZMAN"], requiredFeature: "accounting" },
-    { name: "Loglar", href: "/logs", icon: ClipboardList, roles: ["ADMIN", "ASISTAN"] },
+    { name: "Loglar", href: "/logs", icon: ClipboardList, roles: ["SUPER_ADMIN"] },
     { name: "Klinikler", href: "/clinics", icon: Building2, roles: ["ADMIN"] },
     { name: "Ayarlar", href: "/settings", icon: Settings, roles: ["ADMIN"] },
   ];

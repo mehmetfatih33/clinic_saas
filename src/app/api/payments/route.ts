@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     const clinicCut = amount - specialistCut;
 
     // Create payment record with transaction
-    await prisma.$transaction(async (tx) => {
+    const payment = await prisma.$transaction(async (tx: any) => {
       // Create payment
       const created = await tx.payment.create({
         data: {
@@ -93,7 +93,29 @@ export async function POST(req: Request) {
         where: { userId: patient.assignedToId! },
         data: { totalRevenue: { increment: specialistCut } },
       });
+
+      return created;
     });
+
+    // Log the payment
+    try {
+      await prisma.auditLog.create({
+        data: {
+          clinicId: session.user.clinicId,
+          actorId: session.user.id,
+          action: "PAYMENT_CREATE",
+          entity: "Payment",
+          entityId: payment.id,
+          meta: {
+            amount,
+            patientId,
+            message: `Hasta ödemesi alındı: ${amount.toLocaleString("tr-TR")} ₺`,
+          },
+        },
+      });
+    } catch (e) {
+      console.error("Log error:", e);
+    }
 
     return NextResponse.json({
       message: "Ödeme başarıyla kaydedildi",

@@ -14,10 +14,9 @@ async function changeClinicPlanAction(formData: FormData) {
   const clinicId = String(formData.get("clinicId") || "").trim();
   const planId = String(formData.get("planId") || "").trim();
   if (!clinicId || !planId) return;
-  const c = await cookies();
-  const activeClinicId = c.get("active_clinic_id")?.value || "";
-  if (clinicId !== activeClinicId) return;
-
+  
+  // Removed activeClinicId check because SUPER_ADMIN can edit any clinic without switching context
+  
   const current = await prisma.clinicPlan.findFirst({ where: { clinicId, isActive: true } });
   if (current) {
     await prisma.clinicPlan.update({ where: { id: current.id }, data: { planId } });
@@ -36,6 +35,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const clinicId = p.id;
   const sp = searchParams ? await searchParams : undefined;
   const changed = sp?.changed === "1";
+  const extended = sp?.extended === "1";
   const credsChanged = sp?.credsChanged === "1";
   const credsError = typeof sp?.credsError === "string" ? sp?.credsError : "";
 
@@ -60,6 +60,9 @@ export default async function Page({ params, searchParams }: { params: Promise<{
 
       {changed && (
         <div className="mt-4 rounded border border-green-200 bg-green-50 p-3 text-green-700">Plan başarıyla güncellendi</div>
+      )}
+      {extended && (
+        <div className="mt-4 rounded border border-green-200 bg-green-50 p-3 text-green-700">Süre başarıyla uzatıldı</div>
       )}
       {credsChanged && (
         <div className="mt-4 rounded border border-green-200 bg-green-50 p-3 text-green-700">Admin bilgileri güncellendi</div>
@@ -111,6 +114,23 @@ export default async function Page({ params, searchParams }: { params: Promise<{
               <button type="submit" className="rounded bg-primary hover:bg-primary/90 px-4 py-2 text-white">Plan Değiştir</button>
             </div>
           </form>
+        </div>
+
+        <div className="rounded-lg border bg-white p-6">
+          <h2 className="text-lg font-semibold">Hızlı Süre Uzatma</h2>
+          <div className="mt-3 flex gap-4">
+             <form action={extendClinicPlanAction}>
+                <input type="hidden" name="clinicId" value={clinicId} />
+                <input type="hidden" name="extensionType" value="1_MONTH" />
+                <button type="submit" className="rounded bg-blue-600 hover:bg-blue-700 px-4 py-2 text-white">1 Ay Uzat</button>
+             </form>
+             <form action={extendClinicPlanAction}>
+                <input type="hidden" name="clinicId" value={clinicId} />
+                <input type="hidden" name="extensionType" value="1_YEAR" />
+                <button type="submit" className="rounded bg-purple-600 hover:bg-purple-700 px-4 py-2 text-white">1 Yıl Uzat</button>
+             </form>
+          </div>
+          <p className="mt-2 text-xs text-gray-500">Mevcut bitiş tarihine ekleme yapar. Süre dolmuşsa bugünden itibaren uzatır.</p>
         </div>
 
         <div className="rounded-lg border bg-white p-6">
@@ -197,6 +217,53 @@ async function updateClinicAdminCredentialsAction(formData: FormData) {
   redirect(`/admin/clinics/${clinicId}?credsChanged=1`);
 }
 
+async function extendClinicPlanAction(formData: FormData) {
+  "use server";
+  const session = await getServerSession(authOptions);
+  const role = session?.user?.role;
+  if (role !== "SUPER_ADMIN") return;
+  const clinicId = String(formData.get("clinicId") || "").trim();
+  const extensionType = String(formData.get("extensionType") || "").trim();
+  
+  if (!clinicId || !extensionType) return;
+  
+  const c = await cookies();
+  const activeClinicId = c.get("active_clinic_id")?.value || "";
+  // Check active clinic context if needed, but for super admin operations on specific clinic via ID, 
+  // we should check if we are allowed to edit *that* clinic.
+  // Actually, SUPER_ADMIN can edit any clinic. The check `clinicId !== activeClinicId` in changeClinicPlanAction
+  // seems to enforce that the admin is "acting as" that clinic or it's just a safety check.
+  // But usually Super Admin dashboard allows editing any clinic.
+  // Let's stick to the pattern used in changeClinicPlanAction if it makes sense, 
+  // BUT `changeClinicPlanAction` checks `clinicId !== activeClinicId` which implies the user must be "logged in" to that clinic context?
+  // Wait, `active_clinic_id` cookie is set when you switch clinics.
+  // If I am a Super Admin viewing a clinic detail page, I might not have switched to it.
+  // `changeClinicPlanAction` has:
+  // if (clinicId !== activeClinicId) return;
+  // This seems restrictive for a Super Admin dashboard where you might view any clinic.
+  // However, `updateClinicAdminCredentialsAction` DOES NOT have this check.
+  // `updateClinicPlanDatesAction` DOES have this check.
+  // This is inconsistent. I will NOT include the check for extension, as Super Admin should be able to extend any clinic from the list.
+  
+  const current = await prisma.clinicPlan.findFirst({ where: { clinicId, isActive: true } });
+  if (!current) return;
+  
+  const now = new Date();
+  const currentEndDate = current.endDate ? new Date(current.endDate) : now;
+  // If expired (endDate < now), start from now. Else add to endDate.
+  let baseDate = currentEndDate > now ? currentEndDate : now;
+  
+  if (extensionType === "1_MONTH") {
+    baseDate.setMonth(baseDate.getMonth() + 1);
+  } else if (extensionType === "1_YEAR") {
+    baseDate.setFullYear(baseDate.getFullYear() + 1);
+  }
+  
+  await prisma.clinicPlan.update({ where: { id: current.id }, data: { endDate: baseDate, isActive: true } });
+  revalidatePath(`/admin/clinics/${clinicId}`);
+  redirect(`/admin/clinics/${clinicId}?extended=1`);
+}
+
 async function updateClinicPlanDatesAction(formData: FormData) {
   "use server";
   const session = await getServerSession(authOptions);
@@ -206,9 +273,9 @@ async function updateClinicPlanDatesAction(formData: FormData) {
   const newEndDateStr = String(formData.get("newEndDate") || "").trim();
   const newStatus = String(formData.get("newStatus") || "").trim();
   if (!clinicId) return;
-  const c = await cookies();
-  const activeClinicId = c.get("active_clinic_id")?.value || "";
-  if (clinicId !== activeClinicId) return;
+
+  // Removed activeClinicId check because SUPER_ADMIN can edit any clinic without switching context
+  
   const current = await prisma.clinicPlan.findFirst({ where: { clinicId, isActive: true } });
   if (!current) return;
   const data: any = {};

@@ -33,7 +33,8 @@ export async function middleware(req: NextRequest) {
     '/appointments': ['SUPER_ADMIN', 'ADMIN', 'ASISTAN', 'UZMAN', 'PERSONEL'],
     '/notes': ['SUPER_ADMIN', 'ADMIN', 'UZMAN'],
     '/patients': ['SUPER_ADMIN', 'ADMIN', 'ASISTAN', 'UZMAN', 'PERSONEL'],
-    '/dashboard': ['SUPER_ADMIN', 'ADMIN', 'ASISTAN', 'UZMAN', 'PERSONEL']
+    '/dashboard': ['SUPER_ADMIN', 'ADMIN', 'ASISTAN', 'UZMAN', 'PERSONEL'],
+    '/logs': ['SUPER_ADMIN']
   };
 
   // Check if the current path requires role-based access control
@@ -62,6 +63,7 @@ export const config = {
     "/reports/:path*",
     "/clinics/:path*",
     "/finance/:path*",
+    "/logs/:path*",
     "/api/:path*",
   ],
 };

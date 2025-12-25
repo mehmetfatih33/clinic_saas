@@ -37,7 +37,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     if (status === "PAID") {
       // Record as transaction. For INCOMING with patient+specialist, also create Payment
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: any) => {
         await tx.transaction.create({
           data: {
             clinicId: session.user.clinicId,

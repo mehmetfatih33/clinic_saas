@@ -98,25 +98,35 @@ export async function POST(req: Request) {
     });
 
     // ✅ UZMAN HASTA SAYISINI GÜNCELLE
-    if (data.assignedToId) {
-      try {
+    try {
+      if (data.assignedToId) {
         await prisma.specialistProfile.update({
           where: { userId: data.assignedToId },
-          data: {
-            totalPatients: {
-              increment: 1
-            }
-          }
+          data: { totalPatients: { increment: 1 } },
         });
-        console.log("📊 Uzman hasta sayısı güncellendi:", data.assignedToId);
-      } catch (error) {
-        console.error("⚠️ Uzman hasta sayısı güncellenemedi:", error);
-        // Don't fail the patient creation if specialist count update fails
       }
+
+      // Log kaydı oluştur
+      await prisma.auditLog.create({
+        data: {
+          clinicId: session.user.clinicId,
+          actorId: session.user.id,
+          action: "PATIENT_CREATE",
+          entity: "Patient",
+          entityId: patient.id,
+          meta: {
+            name: patient.name,
+            phone: patient.phone,
+            assignedToId: patient.assignedToId,
+            message: `Yeni hasta oluşturuldu: ${patient.name}`,
+          },
+        },
+      });
+    } catch (error) {
+      console.error("Error updating specialist stats or logging:", error);
     }
 
-    console.log("✅ Hasta başarıyla kaydedildi:", patient);
-    return NextResponse.json(patient);
+    return NextResponse.json(patient, { status: 201 });
   } catch (error) {
     console.error("❌ Hasta oluşturulurken hata:", error);
     return NextResponse.json(

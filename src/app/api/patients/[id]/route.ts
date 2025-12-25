@@ -127,6 +127,25 @@ export async function PATCH(
       }
     }
 
+    // Log update
+    try {
+      await prisma.auditLog.create({
+        data: {
+          clinicId: session.user.clinicId,
+          actorId: session.user.id,
+          action: "PATIENT_UPDATE",
+          entity: "Patient",
+          entityId: updatedPatient.id,
+          meta: {
+            changes: data,
+            message: `Hasta bilgileri güncellendi: ${updatedPatient.name}`,
+          },
+        },
+      });
+    } catch (e) {
+      console.error("Log error:", e);
+    }
+
     return NextResponse.json(updatedPatient);
   } catch (error) {
     console.error("❌ Hasta güncelleme hatası:", error);

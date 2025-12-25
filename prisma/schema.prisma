@@ -263,7 +263,7 @@ model AuditLog {
   actor     User     @relation(fields: [actorId], references: [id])
   clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
-  @@index([clinicId])
+  @@index([clinicId, createdAt])
   @@index([createdAt])
 }
 

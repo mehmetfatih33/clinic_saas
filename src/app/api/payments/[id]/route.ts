@@ -25,7 +25,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const amountDelta = amount - payment.amount;
     const specialistDelta = newSpecialistCut - payment.specialistCut;
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       await tx.payment.update({
         where: { id },
         data: { amount, specialistCut: newSpecialistCut, clinicCut: newClinicCut },
@@ -36,6 +36,26 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
       await tx.cashTransaction.updateMany({ where: { paymentId: id, clinicId: session.user.clinicId }, data: { amount } });
     });
+
+    try {
+      await prisma.auditLog.create({
+        data: {
+          clinicId: session.user.clinicId,
+          actorId: session.user.id,
+          action: "PAYMENT_UPDATE",
+          entity: "Payment",
+          entityId: id,
+          meta: {
+            amount,
+            oldAmount: payment.amount,
+            message: `Ödeme güncellendi: ${payment.amount} -> ${amount} ₺`,
+          },
+        },
+      });
+    } catch (e) {
+      console.error("Log error:", e);
+    }
+
     return NextResponse.json({ message: "Ödeme güncellendi" });
   } catch (err: any) {
     console.error("Payment PATCH error:", err);
@@ -51,12 +71,31 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     const payment = await prisma.payment.findFirst({ where: { id, clinicId: session.user.clinicId } });
     if (!payment) return NextResponse.json({ message: "Ödeme bulunamadı" }, { status: 404 });
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       await tx.payment.delete({ where: { id } });
       await tx.patient.update({ where: { id: payment.patientId }, data: { totalPayments: { decrement: payment.amount } } });
       await tx.specialistProfile.updateMany({ where: { userId: payment.specialistId }, data: { totalRevenue: { decrement: payment.specialistCut } } });
       await tx.cashTransaction.deleteMany({ where: { paymentId: id, clinicId: session.user.clinicId } });
     });
+
+    try {
+      await prisma.auditLog.create({
+        data: {
+          clinicId: session.user.clinicId,
+          actorId: session.user.id,
+          action: "PAYMENT_DELETE",
+          entity: "Payment",
+          entityId: id,
+          meta: {
+            amount: payment.amount,
+            message: `Ödeme silindi: ${payment.amount} ₺`,
+          },
+        },
+      });
+    } catch (e) {
+      console.error("Log error:", e);
+    }
+
     return NextResponse.json({ message: "Ödeme silindi" });
   } catch (err: any) {
     console.error("Payment DELETE error:", err);

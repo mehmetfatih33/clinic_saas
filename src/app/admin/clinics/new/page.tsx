@@ -26,6 +26,7 @@ async function createClinicWithPlanAction(formData: FormData) {
   const adminEmail = String(formData.get("adminEmail") || "").trim();
   const adminPassword = String(formData.get("adminPassword") || "").trim();
   const planId = String(formData.get("planId") || "").trim();
+  const duration = String(formData.get("duration") || "15_DAYS");
 
   if (!clinicName || !clinicSlug || !adminName || !adminEmail || !adminPassword || !planId) {
     redirect("/admin/clinics/new?error=Gerekli%20alanlar%20eksik");
@@ -40,8 +41,15 @@ async function createClinicWithPlanAction(formData: FormData) {
       });
       const start = new Date();
       const end = new Date(start);
-      // Default to 1 month
-      end.setMonth(end.getMonth() + 1);
+      
+      if (duration === "1_YEAR") {
+        end.setFullYear(end.getFullYear() + 1);
+      } else if (duration === "1_MONTH") {
+        end.setMonth(end.getMonth() + 1);
+      } else {
+        // Default 15 days (15_DAYS)
+        end.setDate(end.getDate() + 15);
+      }
       
       await tx.clinicPlan.create({ data: { clinicId: clinic.id, planId, isActive: true, startDate: start, endDate: end } });
     });
@@ -112,15 +120,34 @@ export default async function Page({ searchParams }: { searchParams?: Promise<Re
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold">Plan Seçimi</h2>
-            <div className="mt-3">
-              <label className="text-sm text-gray-700">Plan</label>
-              <select name="planId" className="mt-1 w-full rounded border px-3 py-2" required defaultValue="">
-                <option value="" disabled>Plan seçin</option>
-                {plans.map((p: any) => (
-                  <option key={p.id} value={p.id}>{p.name} ({p.slug})</option>
-                ))}
-              </select>
+            <h2 className="text-lg font-semibold">Plan ve Süre Seçimi</h2>
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm text-gray-700">Plan</label>
+                <select name="planId" className="mt-1 w-full rounded border px-3 py-2" required defaultValue="">
+                  <option value="" disabled>Plan seçin</option>
+                  {plans.map((p: any) => (
+                    <option key={p.id} value={p.id}>{p.name} ({p.slug})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm text-gray-700">Abonelik Süresi</label>
+                <div className="mt-1 flex gap-2">
+                  <label className="flex items-center gap-2 border rounded px-3 py-2 cursor-pointer hover:bg-gray-50">
+                    <input type="radio" name="duration" value="15_DAYS" defaultChecked />
+                    <span className="text-sm">15 Gün (Ücretsiz)</span>
+                  </label>
+                  <label className="flex items-center gap-2 border rounded px-3 py-2 cursor-pointer hover:bg-gray-50">
+                    <input type="radio" name="duration" value="1_MONTH" />
+                    <span className="text-sm">1 Ay</span>
+                  </label>
+                  <label className="flex items-center gap-2 border rounded px-3 py-2 cursor-pointer hover:bg-gray-50">
+                    <input type="radio" name="duration" value="1_YEAR" />
+                    <span className="text-sm">1 Yıl</span>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
 
