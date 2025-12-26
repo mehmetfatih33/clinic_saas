@@ -13,6 +13,7 @@ model Clinic {
   slug                String               @unique
   createdAt           DateTime             @default(now())
   workSchedule        Json?
+  isActive            Boolean              @default(true)
   
   // SMTP Settings
   smtpHost            String?
@@ -87,22 +88,6 @@ model User {
   uploadedDocuments          Document[]
   prescriptions              Prescription[]
   notifications              Notification[]
-}
-
-model Notification {
-  id        String   @id @default(cuid())
-  userId    String
-  title     String
-  message   String
-  isRead    Boolean  @default(false)
-  type      String   @default("INFO")
-  link      String?
-  createdAt DateTime @default(now())
-  
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([isRead])
 }
 
 model SpecialistProfile {
@@ -415,6 +400,8 @@ model ClinicPlan {
   startDate DateTime  @default(now())
   endDate   DateTime?
   isActive  Boolean   @default(true)
+  billingCycle       BillingCycle @default(MONTHLY)
+  lastReminderSentAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   clinic    Clinic    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
@@ -575,41 +562,53 @@ model UserClinic {
   @@index([clinicId])
 }
 
-model Task {
-  id          String       @id @default(cuid())
-  clinicId    String
-  title       String
-  description String?
-  status      TaskStatus   @default(TODO)
-  priority    TaskPriority @default(MEDIUM)
-  dueDate     DateTime?
-  assignedToId String?
-  createdById String
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  type      String   @default("INFO")
+  link      String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
 
-  clinic      Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  assignedTo  User?        @relation("TaskAssignedTo", fields: [assignedToId], references: [id])
-  createdBy   User         @relation("TaskCreatedBy", fields: [createdById], references: [id])
+model Task {
+  id           String       @id @default(cuid())
+  clinicId     String
+  title        String
+  description  String?
+  status       TaskStatus   @default(TODO)
+  priority     TaskPriority @default(MEDIUM)
+  dueDate      DateTime?
+  assignedToId String?
+  createdById  String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  clinic       Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  assignedTo   User?        @relation("TaskAssignedTo", fields: [assignedToId], references: [id])
+  createdBy    User         @relation("TaskCreatedBy", fields: [createdById], references: [id])
 
   @@index([clinicId])
   @@index([assignedToId])
 }
 
 model Document {
-  id          String   @id @default(cuid())
-  clinicId    String
-  patientId   String
-  name        String
-  url         String
-  type        String
-  size        Int
+  id           String   @id @default(cuid())
+  clinicId     String
+  patientId    String
+  name         String
+  url          String
+  type         String
+  size         Int
   uploadedById String
-  createdAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
 
-  clinic      Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  uploadedBy  User     @relation(fields: [uploadedById], references: [id])
+  clinic       Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patient      Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
 
   @@index([clinicId])
   @@index([patientId])
@@ -764,7 +763,6 @@ enum TaskPriority {
 enum ReminderType {
   SMS
   EMAIL
-  WHATSAPP
 }
 
 enum ReminderStatus {
@@ -772,4 +770,9 @@ enum ReminderStatus {
   SENT
   FAILED
   CANCELED
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
 }

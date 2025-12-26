@@ -219,8 +219,6 @@ async function processPendingReminders() {
       if (reminder.type === "EMAIL" && reminder.patient?.email) {
         await sendEmail(reminder.patient.email, "Hatırlatma", reminder.message, smtpConfig);
         sent = true;
-      } else if (reminder.type === "WHATSAPP" && reminder.patient?.phone) {
-        // WhatsApp logic
       }
 
       if (sent) {
