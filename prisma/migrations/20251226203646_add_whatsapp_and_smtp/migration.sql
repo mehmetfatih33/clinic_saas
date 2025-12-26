@@ -7,41 +7,57 @@
 
 */
 -- CreateEnum
-CREATE TYPE "TaskStatus" AS ENUM ('TODO', 'IN_PROGRESS', 'DONE');
+DO $$ BEGIN
+    CREATE TYPE "TaskStatus" AS ENUM ('TODO', 'IN_PROGRESS', 'DONE');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- CreateEnum
-CREATE TYPE "TaskPriority" AS ENUM ('LOW', 'MEDIUM', 'HIGH');
+DO $$ BEGIN
+    CREATE TYPE "TaskPriority" AS ENUM ('LOW', 'MEDIUM', 'HIGH');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- CreateEnum
-CREATE TYPE "ReminderType" AS ENUM ('SMS', 'EMAIL', 'WHATSAPP');
+DO $$ BEGIN
+    CREATE TYPE "ReminderType" AS ENUM ('SMS', 'EMAIL', 'WHATSAPP');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- CreateEnum
-CREATE TYPE "ReminderStatus" AS ENUM ('PENDING', 'SENT', 'FAILED', 'CANCELED');
+DO $$ BEGIN
+    CREATE TYPE "ReminderStatus" AS ENUM ('PENDING', 'SENT', 'FAILED', 'CANCELED');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- DropIndex
 DROP INDEX IF EXISTS "AuditLog_clinicId_idx";
 
 -- AlterTable
-ALTER TABLE "Clinic" DROP COLUMN "isActive",
-ADD COLUMN     "smtpFrom" TEXT,
-ADD COLUMN     "smtpHost" TEXT,
-ADD COLUMN     "smtpPass" TEXT,
-ADD COLUMN     "smtpPort" INTEGER,
-ADD COLUMN     "smtpUser" TEXT;
+ALTER TABLE "Clinic" DROP COLUMN IF EXISTS "isActive";
+ALTER TABLE "Clinic" ADD COLUMN IF NOT EXISTS "smtpFrom" TEXT;
+ALTER TABLE "Clinic" ADD COLUMN IF NOT EXISTS "smtpHost" TEXT;
+ALTER TABLE "Clinic" ADD COLUMN IF NOT EXISTS "smtpPass" TEXT;
+ALTER TABLE "Clinic" ADD COLUMN IF NOT EXISTS "smtpPort" INTEGER;
+ALTER TABLE "Clinic" ADD COLUMN IF NOT EXISTS "smtpUser" TEXT;
 
 -- AlterTable
-ALTER TABLE "ClinicPlan" DROP COLUMN "billingCycle",
-DROP COLUMN "lastReminderSentAt";
+ALTER TABLE "ClinicPlan" DROP COLUMN IF EXISTS "billingCycle";
+ALTER TABLE "ClinicPlan" DROP COLUMN IF EXISTS "lastReminderSentAt";
 
 -- AlterTable
-ALTER TABLE "Patient" ADD COLUMN     "birthDate" TIMESTAMP(3),
-ADD COLUMN     "diagnosis" TEXT;
+ALTER TABLE "Patient" ADD COLUMN IF NOT EXISTS "birthDate" TIMESTAMP(3);
+ALTER TABLE "Patient" ADD COLUMN IF NOT EXISTS "diagnosis" TEXT;
 
 -- DropEnum
-DROP TYPE "BillingCycle";
+DROP TYPE IF EXISTS "BillingCycle";
 
 -- CreateTable
-CREATE TABLE "Notification" (
+CREATE TABLE IF NOT EXISTS "Notification" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "title" TEXT NOT NULL,
@@ -55,7 +71,7 @@ CREATE TABLE "Notification" (
 );
 
 -- CreateTable
-CREATE TABLE "Task" (
+CREATE TABLE IF NOT EXISTS "Task" (
     "id" TEXT NOT NULL,
     "clinicId" TEXT NOT NULL,
     "title" TEXT NOT NULL,
@@ -72,7 +88,7 @@ CREATE TABLE "Task" (
 );
 
 -- CreateTable
-CREATE TABLE "Document" (
+CREATE TABLE IF NOT EXISTS "Document" (
     "id" TEXT NOT NULL,
     "clinicId" TEXT NOT NULL,
     "patientId" TEXT NOT NULL,
@@ -87,7 +103,7 @@ CREATE TABLE "Document" (
 );
 
 -- CreateTable
-CREATE TABLE "Prescription" (
+CREATE TABLE IF NOT EXISTS "Prescription" (
     "id" TEXT NOT NULL,
     "clinicId" TEXT NOT NULL,
     "patientId" TEXT NOT NULL,
