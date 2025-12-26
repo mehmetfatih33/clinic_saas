@@ -19,7 +19,7 @@ CREATE TYPE "ReminderType" AS ENUM ('SMS', 'EMAIL', 'WHATSAPP');
 CREATE TYPE "ReminderStatus" AS ENUM ('PENDING', 'SENT', 'FAILED', 'CANCELED');
 
 -- DropIndex
-DROP INDEX "AuditLog_clinicId_idx";
+DROP INDEX IF EXISTS "AuditLog_clinicId_idx";
 
 -- AlterTable
 ALTER TABLE "Clinic" DROP COLUMN "isActive",
