@@ -6,7 +6,10 @@ export async function GET() {
   try {
     const session = await requireSession();
     const cp = await getCurrentClinicPlan(session.user.clinicId);
-    if (!cp) return NextResponse.json({ slug: "", features: [] }, { status: 200 });
+    if (!cp) {
+      // Default to Basic Plan
+      return NextResponse.json({ slug: "basic", features: ["core-clinic"] }, { status: 200 });
+    }
     return NextResponse.json({ slug: cp.plan.slug, features: cp.plan.features });
   } catch (err: any) {
     if (err?.message === "UNAUTHORIZED") {

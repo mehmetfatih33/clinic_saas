@@ -50,8 +50,13 @@ export async function POST(req: Request) {
 
     // Gerekli alanları kontrol et
     const name = (data.name || '').trim();
-    const phone = (data.phone || '').trim();
+    let phone = (data.phone || '').trim();
+    
+    // Telefonu temizle (boşluk, parantez, tire kaldır)
+    phone = phone.replace(/[\s()\-]/g, '');
+
     const fee = data.fee !== undefined ? parseFloat(String(data.fee)) : NaN;
+    // En az 10 hane, başında + olabilir
     const phoneRegex = /^\+?\d{10,15}$/u;
 
     if (!name) {
@@ -61,13 +66,14 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!phone || !phoneRegex.test(phone)) {
+    if (phone && !phoneRegex.test(phone)) {
       return NextResponse.json(
-        { message: "Telefon zorunludur ve geçerli formatta olmalıdır. (Örn: +905551234567)" },
+        { message: "Telefon geçerli formatta olmalıdır. (Örn: 05551234567)" },
         { status: 400 }
       );
     }
 
+    /*
     if (!data.assignedToId) {
       return NextResponse.json(
         { message: "Uzman seçimi zorunludur." },
@@ -81,19 +87,31 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+    */
+
+    // Tarih geçerliliğini kontrol et
+    let birthDate = null;
+    if (data.birthDate) {
+      birthDate = new Date(data.birthDate);
+      if (isNaN(birthDate.getTime())) {
+        return NextResponse.json({ message: "Geçersiz doğum tarihi" }, { status: 400 });
+      }
+    }
 
     // Kayıt oluştur
     const patient = await prisma.patient.create({
       data: {
         name,
         email: data.email || null,
-        phone,
+        phone: phone || null,
         address: data.address || null,
         reference: data.reference || null,
-        fee,
+        birthDate: birthDate,
+        diagnosis: data.diagnosis || null,
+        fee: Number.isFinite(fee) && fee > 0 ? fee : null,
         specialistShare: parseFloat(data.specialistShare || "50"),
-        assignedToId: data.assignedToId,
-        clinicId: session.user.clinicId || "demo-clinic", // 🌟 BURASI ÖNEMLİ
+        assignedToId: data.assignedToId || null,
+        clinicId: session.user.clinicId || "default-clinic", 
       },
     });
 
@@ -129,9 +147,9 @@ export async function POST(req: Request) {
     return NextResponse.json(patient, { status: 201 });
   } catch (error) {
     console.error("❌ Hasta oluşturulurken hata:", error);
-    return NextResponse.json(
-      { message: "Hasta kaydedilirken bir hata oluştu. Lütfen tekrar deneyin." },
-      { status: 500 }
-    );
+    return NextResponse.json({ 
+      message: "Hasta kaydedilirken bir hata oluştu.", 
+      error: error instanceof Error ? error.message : String(error) 
+    }, { status: 500 });
   }
 }

@@ -1,11 +1,11 @@
 "use client";
-"use client";
 import { Moon, Sun, LogOut, Menu } from "lucide-react";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { useState, useEffect } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { NotificationBell } from "@/components/ui/NotificationBell";
 
 export function Topbar() {
   const [dark, setDark] = useState(false);
@@ -81,8 +81,8 @@ export function Topbar() {
   };
 
   return (
-    <header className="flex items-center justify-between border-b border-border bg-card p-3 px-6">
-      <div className="flex items-center gap-2">
+    <header className="flex items-center justify-between border-b border-border bg-card p-3 px-4 md:px-6">
+      <div className="flex items-center gap-2 flex-1 min-w-0">
         {/* Clinic Selector */}
         {mounted && clinics.length > 0 && (
           <div className="hidden md:block min-w-48">
@@ -109,12 +109,12 @@ export function Topbar() {
               await fetch('/api/active-clinic', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clinicId: val }) });
               qc.invalidateQueries({ predicate: () => true });
             }}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-32 text-xs h-8">
                 <SelectValue placeholder="Klinik Seç" />
               </SelectTrigger>
               <SelectContent>
                 {clinics.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  <SelectItem key={c.id} value={c.id} className="text-xs">{c.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -128,14 +128,14 @@ export function Topbar() {
         >
           <Menu size={18} />
         </button>
-        <h1 className="text-lg font-semibold text-gray-800">Klinik Yönetim Paneli</h1>
+        <h1 className="text-lg font-semibold text-gray-800 hidden md:block">Klinik Yönetim Paneli</h1>
         {mounted && activeClinicId && (
-          <span className="ml-2 rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
+          <span className="ml-2 rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700 hidden sm:inline-block">
             {clinics.find((c) => c.id === activeClinicId)?.name}
           </span>
         )}
         {session?.user && (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500 hidden lg:block">
             Hoşgeldiniz, <span className={getRoleColor(session.user.role)}>{session.user.name}</span>
             <span className="ml-1 text-gray-400">({session.user.role})</span>
           </p>
@@ -143,6 +143,9 @@ export function Topbar() {
       </div>
       
       <div className="flex items-center gap-2">
+        {/* Notifications */}
+        <NotificationBell />
+        
         {/* Dark Mode Toggle */}
         <button
           onClick={() => setDark(!dark)}

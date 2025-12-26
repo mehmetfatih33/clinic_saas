@@ -15,6 +15,30 @@ async function main() {
     create: { name: "Şube 2", slug: "branch-2" },
   });
 
+  // --- PLANS ---
+  const basicPlan = await prisma.plan.upsert({
+    where: { slug: "basic" },
+    update: { features: ["core-clinic"] },
+    create: {
+      slug: "basic",
+      name: "Temel Paket",
+      description: "Temel klinik yönetimi",
+      features: ["core-clinic"],
+    },
+  });
+
+  const proPlan = await prisma.plan.upsert({
+    where: { slug: "pro" },
+    update: { features: ["core-clinic", "tasks", "prescriptions", "documents", "analytics", "room-tracking", "accounting"] },
+    create: {
+      slug: "pro",
+      name: "Pro Paket",
+      description: "Tüm özellikler dahil",
+      features: ["core-clinic", "tasks", "prescriptions", "documents", "analytics", "room-tracking", "accounting"],
+    },
+  });
+  // --- END PLANS ---
+
 
   await prisma.user.upsert({
     where: { email: "admin@admin.com" },

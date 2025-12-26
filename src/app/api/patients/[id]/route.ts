@@ -19,16 +19,26 @@ export async function GET(
       return NextResponse.json({ message: "Yetkisiz erişim" }, { status: 401 });
     }
 
-    const patient = await prisma.patient.findUnique({
-      where: { 
-        id,
-        clinicId: session.user.clinicId 
-      },
+    const whereClause: any = {
+      id,
+      clinicId: session.user.clinicId 
+    };
+
+    // Uzmanlar sadece kendi hastalarını görebilir
+    if (session.user.role === "UZMAN") {
+      whereClause.assignedToId = session.user.id;
+    }
+
+    const patient = await prisma.patient.findFirst({
+      where: whereClause,
       include: {
         specialist: {
           include: {
             specialist: true
           }
+        },
+        documents: {
+          orderBy: { createdAt: 'desc' }
         }
       },
     });
@@ -85,6 +95,8 @@ export async function PATCH(
         phone: data.phone || undefined,
         address: data.address || undefined,
         reference: data.reference || undefined,
+        birthDate: data.birthDate ? new Date(data.birthDate) : undefined,
+        diagnosis: data.diagnosis || undefined,
         specialistShare: data.specialistShare ? parseFloat(data.specialistShare) : undefined,
         // Uzman değişikliği için özel mantık
         ...(data.assignedToId !== undefined && {

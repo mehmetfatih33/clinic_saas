@@ -106,14 +106,18 @@ h1, h2, h3, h4, h5, h6 { color: var(--foreground); }
 
   .sidebar { display: none; }
   body.mobile-sidebar-open .sidebar {
-    display: flex;
+    display: flex !important;
     position: fixed;
     left: 0;
     top: 0;
     height: 100vh;
     width: 80vw;
     max-width: 300px;
-    z-index: 50;
+    z-index: 9999;
+    background-color: white;
     box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  }
+  .dark body.mobile-sidebar-open .sidebar {
+    background-color: #111827;
   }
 }

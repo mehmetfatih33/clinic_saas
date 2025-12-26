@@ -39,6 +39,15 @@ async function createClinicWithPlanAction(formData: FormData) {
       await tx.user.create({
         data: { email: adminEmail, name: adminName, role: "ADMIN", clinicId: clinic.id, passwordHash },
       });
+
+      // Default room creation
+      await tx.room.create({
+        data: {
+          clinicId: clinic.id,
+          name: "Muayene Odası 1",
+        }
+      });
+
       const start = new Date();
       const end = new Date(start);
       

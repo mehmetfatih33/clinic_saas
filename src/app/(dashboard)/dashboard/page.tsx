@@ -2,10 +2,10 @@
 "use client";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { Users, CreditCard, DollarSign, Calendar, UserCheck, Clock, FileText, Activity, Building2 } from "lucide-react";
+import { Users, CreditCard, DollarSign, Calendar, UserCheck, Clock, FileText, Activity, Building2, Edit2, X, Save } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ToastProvider, useToast } from "@/components/ui/ToastProvider";
 import { ComposedChart, Bar, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, Label } from "recharts";
 import moment from "moment";
@@ -31,6 +31,43 @@ export default function DashboardPage() {
 
   const [range, setRange] = useState<"ALL" | "1M" | "6M" | "1Y">("1M");
   const [notifiedIds, setNotifiedIds] = useState<Set<string>>(new Set());
+  
+  // Note editing state
+  const [editingAppointment, setEditingAppointment] = useState<any>(null);
+  const [noteContent, setNoteContent] = useState("");
+  const queryClient = useQueryClient();
+
+  // Note update mutation
+  const updateNoteMutation = useMutation({
+    mutationFn: async ({ id, notes }: { id: string, notes: string }) => {
+      const res = await fetch(`/api/appointments/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes }),
+      });
+      if (!res.ok) throw new Error("Not güncellenemedi");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["recent-appointments"] });
+      setEditingAppointment(null);
+      show("Not başarıyla güncellendi", "success");
+    },
+    onError: () => {
+      show("Not güncellenirken bir hata oluştu", "error");
+    }
+  });
+
+  const handleEditNote = (appointment: any) => {
+    setEditingAppointment(appointment);
+    setNoteContent(appointment.notes || "");
+  };
+
+  const handleSaveNote = () => {
+    if (editingAppointment) {
+      updateNoteMutation.mutate({ id: editingAppointment.id, notes: noteContent });
+    }
+  };
 
   // Fetch appointments for recent activity (role-based)
   const { data: recentAppointments = [] } = useQuery({
@@ -265,11 +302,11 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {isAdmin ? (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
             <h1 className="text-xl font-semibold">Hoş geldiniz, {session?.user?.name}</h1>
-            <div className="flex gap-2">
-              <button onClick={() => router.push("/appointments/create")} className="px-3 py-2 rounded-md bg-primary hover:bg-primary/90 text-white text-sm">+ Randevu Ekle</button>
-              <div className="px-3 py-2 rounded-md bg-blue-50 text-blue-600 text-sm">{moment().startOf("month").format("DD MMM")} - {moment().endOf("month").format("DD MMM")}</div>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => router.push("/appointments/create")} className="px-3 py-2 rounded-md bg-primary hover:bg-primary/90 text-white text-sm whitespace-nowrap">+ Randevu Ekle</button>
+              <div className="px-3 py-2 rounded-md bg-blue-50 text-blue-600 text-sm whitespace-nowrap">{moment().startOf("month").format("DD MMM")} - {moment().endOf("month").format("DD MMM")}</div>
             </div>
           </div>
           <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
@@ -411,11 +448,13 @@ export default function DashboardPage() {
             {recentAppointments.map((appointment: any) => (
               <div 
                 key={appointment.id} 
-                className="p-4 border border-gray-100 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
-                onClick={() => router.push('/appointments')}
+                className="p-4 border border-gray-100 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
+                <div 
+                  className="flex items-start gap-3 cursor-pointer"
+                  onClick={() => router.push('/appointments')}
+                >
+                  <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center shrink-0">
                     <span className="text-green-600 dark:text-green-400 text-sm font-medium">
                       {appointment.patient?.name?.charAt(0) || 'H'}
                     </span>
@@ -425,9 +464,21 @@ export default function DashboardPage() {
                       <p className="text-sm font-medium text-gray-900 dark:text-white">
                         {appointment.patient?.name || 'Hasta'}
                       </p>
-                      <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(appointment.status)}`}>
-                        {getStatusText(appointment.status)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditNote(appointment);
+                          }}
+                          className="text-blue-600 hover:text-blue-800 transition-colors p-1.5 rounded-full bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400"
+                          title="Not Ekle/Düzenle"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(appointment.status)}`}>
+                          {getStatusText(appointment.status)}
+                        </span>
+                      </div>
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       Uzman: {appointment.specialist?.name || 'Belirtilmemiş'}
@@ -441,6 +492,11 @@ export default function DashboardPage() {
                         minute: '2-digit'
                       })}
                     </p>
+                    {appointment.notes && (
+                      <div className="mt-2 text-xs text-gray-500 italic bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-600">
+                        <span className="font-semibold">Not:</span> {appointment.notes}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -603,6 +659,50 @@ export default function DashboardPage() {
         </div>
       )}
     </div>
+      {/* Note Editing Modal */}
+      {editingAppointment && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full border shadow-xl">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center justify-between">
+              <span>Randevu Notu</span>
+              <button onClick={() => setEditingAppointment(null)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                <X size={20} />
+              </button>
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                  <span className="font-medium text-gray-900 dark:text-white">{editingAppointment.patient?.name}</span> için randevu notu:
+                </p>
+                <textarea
+                  className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-3 text-gray-900 dark:text-white min-h-[120px] focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                  placeholder="Randevu hakkında notlar ekleyin..."
+                  value={noteContent}
+                  onChange={(e) => setNoteContent(e.target.value)}
+                />
+              </div>
+              
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setEditingAppointment(null)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition-colors"
+                >
+                  İptal
+                </button>
+                <button
+                  onClick={handleSaveNote}
+                  disabled={updateNoteMutation.isPending}
+                  className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90 flex items-center gap-2 disabled:opacity-50 transition-colors"
+                >
+                  <Save size={16} />
+                  {updateNoteMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </ToastProvider>
   );
 }

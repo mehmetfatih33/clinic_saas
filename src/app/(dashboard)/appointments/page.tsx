@@ -397,16 +397,16 @@ export default function AppointmentCalendar() {
     <ToastProvider>
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div className="flex items-center gap-3">
+        <CardHeader className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
+          <div className="flex items-center justify-center gap-2 md:justify-start">
             <Button size="sm" variant="outline" onClick={goPrev}>Önceki</Button>
             <Button size="sm" variant="outline" onClick={goToday}>Bugün</Button>
             <Button size="sm" variant="outline" onClick={goNext}>Sonraki</Button>
           </div>
-          <div className="text-sm font-semibold">
+          <div className="text-base font-semibold text-center">
             {headerLabel}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-2 overflow-x-auto md:justify-end">
             <Button size="sm" variant={currentView === "month" ? "default" : "outline"} onClick={() => setCurrentView("month")}>Ay</Button>
             <Button size="sm" variant={currentView === "week" ? "default" : "outline"} onClick={() => setCurrentView("week")}>Hafta</Button>
             <Button size="sm" variant={currentView === "day" ? "default" : "outline"} onClick={() => setCurrentView("day")}>Gün</Button>
@@ -414,8 +414,8 @@ export default function AppointmentCalendar() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-            <div className="md:col-span-1">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <div className="lg:col-span-1">
               <div className="p-4 bg-gray-50 rounded-lg border space-y-4">
                 <Button className="w-full" onClick={() => setShowCreate(true)}>+ Yeni Randevu</Button>
                 <div className="space-y-2 text-sm">
@@ -426,7 +426,7 @@ export default function AppointmentCalendar() {
                 </div>
               </div>
             </div>
-            <div className="md:col-span-4">
+            <div className="lg:col-span-4">
           {canCreateAppointment && showCreate && (
             <div className="mb-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
               <Card>

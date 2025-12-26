@@ -23,13 +23,26 @@ export async function PUT(req: Request) {
     const session = await requireSession();
     ensureRole(session as any, ["ADMIN"]);
     const body = await req.json();
-    const { name, workSchedule } = body as { name?: string; workSchedule?: any };
+    const { name, workSchedule, smtpHost, smtpPort, smtpUser, smtpPass, smtpFrom } = body as { 
+      name?: string; 
+      workSchedule?: any;
+      smtpHost?: string;
+      smtpPort?: number;
+      smtpUser?: string;
+      smtpPass?: string;
+      smtpFrom?: string;
+    };
 
-    // workSchedule alanı bazı ortamlarda henüz olmadığı için sadece name güncellendi
     const updated = await prisma.clinic.update({
       where: { id: session.user.clinicId },
       data: {
         ...(typeof name === "string" ? { name } : {}),
+        ...(workSchedule ? { workSchedule } : {}),
+        ...(typeof smtpHost === "string" ? { smtpHost } : {}),
+        ...(typeof smtpPort === "number" ? { smtpPort } : {}),
+        ...(typeof smtpUser === "string" ? { smtpUser } : {}),
+        ...(typeof smtpPass === "string" ? { smtpPass } : {}),
+        ...(typeof smtpFrom === "string" ? { smtpFrom } : {}),
       },
     });
     return NextResponse.json(updated);

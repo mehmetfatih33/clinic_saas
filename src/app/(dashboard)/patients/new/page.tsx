@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { User, Mail, Phone, Stethoscope, CreditCard, CheckCircle } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { User, Mail, Phone, Stethoscope, CreditCard, CheckCircle, Calendar } from 'lucide-react';
 
 interface Specialist {
   id: string;
@@ -162,6 +163,15 @@ export default function NewPatientPage() {
                   <label className="text-sm font-medium">Referans</label>
                   <Input name="reference" placeholder="İsteğe bağlı" />
                 </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Doğum Tarihi</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                      <Calendar size={16} />
+                    </span>
+                    <Input name="birthDate" type="date" className="pl-9" />
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -205,6 +215,11 @@ export default function NewPatientPage() {
                       className="pl-9"
                     />
                   </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Tanılar</label>
+                  <Textarea name="diagnosis" placeholder="Tanı giriniz..." rows={3} />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

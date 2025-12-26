@@ -27,7 +27,16 @@ export default function SettingsPage() {
   });
   const roomFeatureAllowed = !!(plan && ((plan.slug === "full") || (Array.isArray(plan.features) && plan.features.includes("room-tracking")) || (plan.slug === "")));
 
-  const { data: clinic } = useQuery<{ id: string; name: string; workSchedule?: WorkSchedule | null }>({
+  const { data: clinic } = useQuery<{ 
+    id: string; 
+    name: string; 
+    workSchedule?: WorkSchedule | null;
+    smtpHost?: string;
+    smtpPort?: number;
+    smtpUser?: string;
+    smtpPass?: string;
+    smtpFrom?: string;
+  }>({
     queryKey: ["clinic-settings"],
     queryFn: async () => {
       const res = await fetch("/api/clinic/settings");
@@ -46,12 +55,26 @@ export default function SettingsPage() {
     sat: { closed: true },
     sun: { closed: true },
   });
+  const [smtp, setSmtp] = useState({
+    host: "",
+    port: "587",
+    user: "",
+    pass: "",
+    from: ""
+  });
 
   // Init local state when clinic loads
   React.useEffect(() => {
     if (clinic) {
       setName(clinic.name || "");
       if (clinic.workSchedule) setSchedule(clinic.workSchedule as WorkSchedule);
+      setSmtp({
+        host: clinic.smtpHost || "",
+        port: clinic.smtpPort?.toString() || "587",
+        user: clinic.smtpUser || "",
+        pass: clinic.smtpPass || "",
+        from: clinic.smtpFrom || ""
+      });
     }
   }, [clinic]);
 
@@ -60,7 +83,15 @@ export default function SettingsPage() {
       const res = await fetch("/api/clinic/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, workSchedule: schedule }),
+        body: JSON.stringify({ 
+          name, 
+          workSchedule: schedule,
+          smtpHost: smtp.host,
+          smtpPort: Number(smtp.port),
+          smtpUser: smtp.user,
+          smtpPass: smtp.pass,
+          smtpFrom: smtp.from
+        }),
       });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
@@ -171,6 +202,7 @@ export default function SettingsPage() {
         <Tabs defaultValue="clinic">
           <TabsList>
             <TabsTrigger value="clinic">Klinik</TabsTrigger>
+            <TabsTrigger value="email">Bildirimler</TabsTrigger>
             <TabsTrigger value="staff">Çalışanlar</TabsTrigger>
           </TabsList>
 
@@ -215,6 +247,42 @@ export default function SettingsPage() {
                 </div>
                 <Button onClick={() => updateSettings.mutate()} disabled={updateSettings.isPending}>
                   {updateSettings.isPending ? "Kaydediliyor..." : "Kaydet"}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="email">
+            <Card>
+              <CardHeader>
+                <h2 className="text-lg font-semibold">E-posta Ayarları (SMTP)</h2>
+                <p className="text-sm text-gray-500">Randevu hatırlatmaları ve bilgilendirme e-postalarının gönderileceği hesap bilgileri.</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm">SMTP Sunucusu</label>
+                    <Input placeholder="smtp.gmail.com" value={smtp.host} onChange={(e) => setSmtp({ ...smtp, host: e.target.value })} className="mt-1" />
+                  </div>
+                  <div>
+                    <label className="text-sm">SMTP Portu</label>
+                    <Input placeholder="587" value={smtp.port} onChange={(e) => setSmtp({ ...smtp, port: e.target.value })} className="mt-1" />
+                  </div>
+                  <div>
+                    <label className="text-sm">Kullanıcı Adı (E-posta)</label>
+                    <Input placeholder="info@klinik.com" value={smtp.user} onChange={(e) => setSmtp({ ...smtp, user: e.target.value })} className="mt-1" />
+                  </div>
+                  <div>
+                    <label className="text-sm">Şifre (Uygulama Şifresi)</label>
+                    <Input type="password" placeholder="********" value={smtp.pass} onChange={(e) => setSmtp({ ...smtp, pass: e.target.value })} className="mt-1" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-sm">Gönderen Adı / E-posta</label>
+                    <Input placeholder="Klinik Adı <info@klinik.com>" value={smtp.from} onChange={(e) => setSmtp({ ...smtp, from: e.target.value })} className="mt-1" />
+                  </div>
+                </div>
+                <Button onClick={() => updateSettings.mutate()} disabled={updateSettings.isPending}>
+                  {updateSettings.isPending ? "Kaydediliyor..." : "Ayarları Kaydet"}
                 </Button>
               </CardContent>
             </Card>

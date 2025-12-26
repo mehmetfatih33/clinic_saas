@@ -2,22 +2,24 @@ import { ReactNode } from "react";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import AdminSidebar from "@/components/admin/AdminSidebar";
+import AdminShell from "@/components/admin/AdminShell";
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const session = await getServerSession(authOptions);
-  if (!session) {
-    redirect("/login");
+  
+  // Ensure strict check for SUPER_ADMIN
+  if (!session || session.user.role !== "SUPER_ADMIN") {
+    // If user is logged in but not SUPER_ADMIN, redirect to dashboard or login
+    if (session) {
+       redirect("/dashboard");
+    } else {
+       redirect("/login");
+    }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="grid grid-cols-1 md:grid-cols-[256px_1fr]">
-        <AdminSidebar />
-        <main className="p-6">
-          {children}
-        </main>
-      </div>
-    </div>
+    <AdminShell>
+      {children}
+    </AdminShell>
   );
 }

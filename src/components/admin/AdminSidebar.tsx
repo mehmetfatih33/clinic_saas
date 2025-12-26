@@ -6,7 +6,12 @@ import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import clsx from "clsx";
 
-export default function AdminSidebar() {
+interface AdminSidebarProps {
+  className?: string;
+  onClose?: () => void;
+}
+
+export default function AdminSidebar({ className, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
   const items = [
     { label: "Panel", href: "/admin", icon: LayoutDashboard },
@@ -17,7 +22,7 @@ export default function AdminSidebar() {
   ];
 
   return (
-    <aside className="hidden md:flex h-screen w-64 flex-col justify-between border-r bg-white p-4">
+    <aside className={clsx("flex flex-col justify-between h-full bg-white p-4", className)}>
       <div>
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-primary">Super Admin</h2>
@@ -30,6 +35,7 @@ export default function AdminSidebar() {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={onClose}
                 className={clsx(
                   "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium",
                   active ? "bg-primary text-primary-foreground" : "text-gray-700 hover:bg-gray-100"
@@ -56,4 +62,3 @@ export default function AdminSidebar() {
     </aside>
   );
 }
-

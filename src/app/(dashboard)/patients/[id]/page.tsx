@@ -9,7 +9,7 @@ import { ToastProvider, useToast } from "@/components/ui/ToastProvider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
-import { Edit2, Check, X, FileText, Calendar } from "lucide-react";
+import { Edit2, Check, X, FileText, Calendar, Save, ChevronDown, ChevronUp, File, ExternalLink } from "lucide-react";
 
 interface PatientDetailsProps {
   params: Promise<{ id: string }>;
@@ -117,16 +117,18 @@ function PaymentSection({
   );
 }
 
-// Appointment History Component
-function AppointmentHistory({ patientId }: { patientId: string }) {
-  const { data: appointments, isLoading } = useQuery({
-    queryKey: ["patient-appointments", patientId],
-    queryFn: async () => {
-      const res = await fetch(`/api/patients/${patientId}/appointments`);
-      if (!res.ok) throw new Error("Randevu geçmişi alınamadı");
-      return res.json();
-    },
-  });
+// Appointment Item Component for Expandable Cards
+function AppointmentItem({ 
+  appointment, 
+  onEdit 
+}: { 
+  appointment: any; 
+  onEdit: (apt: any) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const appointmentDate = new Date(appointment.date);
+  const now = new Date();
+  const isPast = appointmentDate < now;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -151,6 +153,159 @@ function AppointmentHistory({ patientId }: { patientId: string }) {
         return '📅 Planlanmış';
       default:
         return status;
+    }
+  };
+
+  return (
+    <div 
+      className={`border rounded-lg transition-all duration-200 ${
+        isOpen ? 'bg-white shadow-md ring-1 ring-blue-100' : 'hover:bg-gray-50 bg-white'
+      }`}
+    >
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        className="p-4 flex items-center justify-between cursor-pointer select-none group"
+      >
+        <div className="flex items-center gap-4">
+          <div className={`p-2 rounded-lg ${isOpen ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200 transition-colors'}`}>
+             <Calendar size={20} />
+          </div>
+          <div className="flex flex-col">
+            <span className="font-semibold text-gray-900">
+              {appointmentDate.toLocaleDateString("tr-TR", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric"
+              })}
+            </span>
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <span>{appointmentDate.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span>
+              <span>•</span>
+              <span className={isPast ? "text-gray-500" : "text-blue-600 font-medium"}>
+                {isPast ? "Geçmiş" : "Gelecek"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(appointment.status)}`}>
+            {getStatusText(appointment.status)}
+          </span>
+          {isOpen ? <ChevronUp size={20} className="text-gray-400" /> : <ChevronDown size={20} className="text-gray-400" />}
+        </div>
+      </div>
+
+      {isOpen && (
+        <div className="px-4 pb-4 pt-0 border-t bg-gray-50/30">
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+               <h5 className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                 ℹ️ Randevu Detayları
+               </h5>
+               <div className="bg-white p-3 rounded border space-y-2 text-sm text-gray-600">
+                 <p className="flex justify-between">
+                   <span className="font-medium">⏱️ Süre:</span> 
+                   <span>{appointment.duration} dakika</span>
+                 </p>
+                 <p className="flex justify-between">
+                   <span className="font-medium">👨‍⚕️ Uzman:</span> 
+                   <span>{appointment.specialist?.name || "Belirtilmemiş"}</span>
+                 </p>
+                 <p className="flex justify-between">
+                   <span className="font-medium">📅 Oluşturulma:</span> 
+                   <span>{new Date(appointment.createdAt).toLocaleDateString("tr-TR")}</span>
+                 </p>
+               </div>
+            </div>
+
+            <div className="space-y-3">
+               <div className="flex items-center justify-between">
+                  <h5 className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                    📝 Notlar
+                  </h5>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(appointment);
+                    }}
+                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
+                  >
+                    <Edit2 size={12} />
+                    Düzenle
+                  </button>
+               </div>
+               
+               <div className="bg-white p-3 rounded border min-h-[80px] overflow-hidden">
+                 {appointment.notes ? (
+                   <p className="text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">{appointment.notes}</p>
+                 ) : (
+                   <p className="text-sm text-gray-400 italic">Bu randevu için henüz not eklenmemiş.</p>
+                 )}
+               </div>
+
+               {appointment.sessionNotes && appointment.sessionNotes.length > 0 && (
+                 <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-100">
+                   <span>🧠</span>
+                   <span className="font-medium">{appointment.sessionNotes.length} seans notu mevcut</span>
+                 </div>
+               )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Appointment History Component
+function AppointmentHistory({ patientId }: { patientId: string }) {
+  const { data: appointments, isLoading } = useQuery({
+    queryKey: ["patient-appointments", patientId],
+    queryFn: async () => {
+      const res = await fetch(`/api/patients/${patientId}/appointments`);
+      if (!res.ok) throw new Error("Randevu geçmişi alınamadı");
+      return res.json();
+    },
+  });
+
+  const queryClient = useQueryClient();
+  const { show: showToast } = useToast();
+  const [editingAppointment, setEditingAppointment] = useState<any>(null);
+  const [noteContent, setNoteContent] = useState("");
+
+  const updateNoteMutation = useMutation({
+    mutationFn: async ({ id, notes }: { id: string; notes: string }) => {
+      const res = await fetch(`/api/appointments/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes }),
+      });
+      if (!res.ok) throw new Error("Not güncellenemedi");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["patient-appointments", patientId] });
+      setEditingAppointment(null);
+      showToast("Not başarıyla güncellendi", "success");
+    },
+    onError: () => {
+      showToast("Not güncellenirken bir hata oluştu", "error");
+    },
+  });
+
+  const handleEditNote = (appointment: any) => {
+    setEditingAppointment(appointment);
+    setNoteContent(appointment.notes || "");
+  };
+
+  const handleSaveNote = () => {
+    if (editingAppointment) {
+      updateNoteMutation.mutate({
+        id: editingAppointment.id,
+        notes: noteContent,
+      });
     }
   };
 
@@ -181,74 +336,13 @@ function AppointmentHistory({ patientId }: { patientId: string }) {
       <CardContent>
         {appointments && appointments.length > 0 ? (
           <div className="space-y-3">
-            {appointments.map((appointment: any) => {
-              const appointmentDate = new Date(appointment.date);
-              const now = new Date();
-              const isPast = appointmentDate < now;
-              
-              return (
-                <div key={appointment.id} className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h4 className="font-medium text-gray-900">
-                          {appointmentDate.toLocaleDateString("tr-TR", {
-                            weekday: "long",
-                            day: "numeric",
-                            month: "long",
-                            year: "numeric"
-                          })}
-                        </h4>
-                        <span className={`px-2 py-1 rounded-full text-xs border ${
-                          getStatusColor(appointment.status)
-                        }`}>
-                          {getStatusText(appointment.status)}
-                        </span>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-gray-600">
-                        <p>
-                          <span className="font-medium">🕐 Saat:</span> {appointmentDate.toLocaleTimeString("tr-TR", {
-                            hour: "2-digit",
-                            minute: "2-digit"
-                          })}
-                        </p>
-                        <p>
-                          <span className="font-medium">⏱️ Süre:</span> {appointment.duration} dakika
-                        </p>
-                        <p>
-                          <span className="font-medium">👨‍⚕️ Uzman:</span> {appointment.specialist?.name || "Belirtilmemiş"}
-                        </p>
-                      </div>
-                      
-                      {appointment.notes && (
-                        <div className="mt-2 p-2 bg-gray-100 rounded text-sm">
-                          <span className="font-medium">📝 Notlar:</span> {appointment.notes}
-                        </div>
-                      )}
-                      
-                      {/* Session Notes Count */}
-                      {appointment.sessionNotes && appointment.sessionNotes.length > 0 && (
-                        <div className="mt-2 text-xs text-blue-600">
-                          🧠 {appointment.sessionNotes.length} seans notu var
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="text-right">
-                      <p className={`text-xs ${
-                        isPast ? "text-gray-500" : "text-blue-600 font-medium"
-                      }`}>
-                        {isPast ? "Geçmiş" : "Gelecek"}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        Oluşturulma: {new Date(appointment.createdAt).toLocaleDateString("tr-TR")}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {appointments.map((appointment: any) => (
+              <AppointmentItem 
+                key={appointment.id} 
+                appointment={appointment} 
+                onEdit={handleEditNote} 
+              />
+            ))}
           </div>
         ) : (
           <div className="text-center py-8">
@@ -257,6 +351,51 @@ function AppointmentHistory({ patientId }: { patientId: string }) {
             <p className="text-gray-400 text-xs mt-1">
               Bu hasta için henüz randevu oluşturulmamış
             </p>
+          </div>
+        )}
+        
+        {/* Note Editing Modal */}
+        {editingAppointment && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full border shadow-xl">
+              <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center justify-between">
+                <span>Randevu Notu</span>
+                <button onClick={() => setEditingAppointment(null)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                  <X size={20} />
+                </button>
+              </h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                    Randevu notu düzenle:
+                  </p>
+                  <Textarea
+                    className="w-full min-h-[120px]"
+                    placeholder="Randevu hakkında notlar ekleyin..."
+                    value={noteContent}
+                    onChange={(e) => setNoteContent(e.target.value)}
+                  />
+                </div>
+                
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setEditingAppointment(null)}
+                  >
+                    İptal
+                  </Button>
+                  <Button
+                    onClick={handleSaveNote}
+                    disabled={updateNoteMutation.isPending}
+                    className="flex items-center gap-2"
+                  >
+                    <Save size={16} />
+                    {updateNoteMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </CardContent>
@@ -490,7 +629,7 @@ export default function PatientDetailsPage({ params }: PatientDetailsProps) {
     label: string;
     value: string | number;
     field: string;
-    type?: "text" | "email" | "tel" | "select";
+    type?: "text" | "email" | "tel" | "select" | "date" | "textarea";
     options?: { value: string; label: string }[];
     onUpdate: () => void;
   }) {
@@ -556,6 +695,8 @@ export default function PatientDetailsPage({ params }: PatientDetailsProps) {
           <p className={(value && value !== "none") ? "" : "text-gray-400"}>
             {type === "select" && options && value 
               ? (value === "none" ? "Uzman Atanmamış" : options.find(opt => opt.value === value)?.label || value)
+              : type === "date" && value
+              ? new Date(value).toLocaleDateString("tr-TR")
               : value || "Belirtilmemiş"
             }
           </p>
@@ -582,6 +723,13 @@ export default function PatientDetailsPage({ params }: PatientDetailsProps) {
                   ))}
                 </SelectContent>
               </Select>
+            ) : type === "textarea" ? (
+              <Textarea
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                className="w-full min-h-[100px]"
+                placeholder={`${label} girin`}
+              />
             ) : (
               <Input
                 type={type}
@@ -614,6 +762,8 @@ export default function PatientDetailsPage({ params }: PatientDetailsProps) {
             <p className={(value && value !== "none") ? "flex-1" : "flex-1 text-gray-400"}>
               {type === "select" && options && value 
                 ? (value === "none" ? "Uzman Atanmamış" : options.find(opt => opt.value === value)?.label || value)
+                : type === "date" && value
+                ? new Date(value).toLocaleDateString("tr-TR")
                 : value || "Belirtilmemiş"
               }
             </p>
@@ -728,11 +878,28 @@ export default function PatientDetailsPage({ params }: PatientDetailsProps) {
                 onUpdate={() => {}}
               />
               
+              <div className="grid grid-cols-2 gap-4">
+                <EditableField
+                  label="Referans"
+                  value={patient.reference}
+                  field="reference"
+                  type="text"
+                  onUpdate={() => {}}
+                />
+                <EditableField
+                  label="Doğum Tarihi"
+                  value={patient.birthDate ? new Date(patient.birthDate).toISOString().split('T')[0] : ""}
+                  field="birthDate"
+                  type="date"
+                  onUpdate={() => {}}
+                />
+              </div>
+
               <EditableField
-                label="Referans"
-                value={patient.reference}
-                field="reference"
-                type="text"
+                label="Tanılar"
+                value={patient.diagnosis}
+                field="diagnosis"
+                type="textarea"
                 onUpdate={() => {}}
               />
             </CardContent>
@@ -751,6 +918,49 @@ export default function PatientDetailsPage({ params }: PatientDetailsProps) {
               </CardContent>
             </Card>
           )}
+
+          {/* Documents */}
+          <Card className="md:col-span-2">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Dokümanlar</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {patient.documents && patient.documents.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {patient.documents.map((doc: any) => (
+                    <div key={doc.id} className="flex items-center justify-between p-3 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow group">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                            <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                                {doc.type === "GORUNTULEME" ? <FileText className="text-purple-600" size={20} /> :
+                                 doc.type === "ANALIZ" ? <FileText className="text-green-600" size={20} /> :
+                                 <File className="text-blue-600" size={20} />}
+                            </div>
+                            <div className="min-w-0">
+                                <p className="font-medium text-sm truncate" title={doc.name}>{doc.name}</p>
+                                <p className="text-xs text-gray-500">{new Date(doc.createdAt).toLocaleDateString('tr-TR')}</p>
+                            </div>
+                        </div>
+                        {doc.url && (
+                            <a 
+                                href={doc.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="p-2 text-gray-400 hover:text-primary transition-colors"
+                                title="Görüntüle / Yazdır"
+                            >
+                                <ExternalLink size={18} />
+                            </a>
+                        )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-gray-500">
+                  <p>Bu hastaya ait doküman bulunmuyor.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Specialist Assignment */}
           <Card>

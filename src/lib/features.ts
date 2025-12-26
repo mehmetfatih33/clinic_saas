@@ -2,7 +2,16 @@ import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/authz";
 import { redirect } from "next/navigation";
 
-export type FeatureSlug = "core-clinic" | "room-tracking" | "accounting" | "multi-user";
+export type FeatureSlug =
+  | "core-clinic"
+  | "room-tracking"
+  | "accounting"
+  | "multi-user"
+  | "multi-room"
+  | "analytics"
+  | "documents"
+  | "prescriptions"
+  | "tasks";
 
 export async function getCurrentClinicPlan(clinicId: string) {
   const cp = await prisma.clinicPlan.findFirst({
@@ -16,12 +25,23 @@ export async function getCurrentClinicPlan(clinicId: string) {
 
 export async function hasFeature(clinicId: string, featureSlug: FeatureSlug): Promise<boolean> {
   const session = await requireSession();
-  if (featureSlug !== "multi-user" && (session.user.role === "ADMIN" || session.user.role === "ASISTAN")) return true;
+  
+  // Get current plan or default to Basic
   const current = await getCurrentClinicPlan(clinicId);
-  if (!current?.plan) return featureSlug === "room-tracking";
+  
+  // If no plan, assume Basic plan (only core-clinic)
+  if (!current?.plan) {
+    // Basic plan only has "core-clinic"
+    return featureSlug === "core-clinic";
+  }
+
   const slug = current.plan.slug as string;
   if (slug === "full") return true;
-  if (slug === "pro" && featureSlug === "room-tracking") return true;
+  
+  // Handle Pro plan manually if features are not in DB array for some reason, 
+  // but better to rely on DB features. 
+  // For now, let's assume DB features are correct.
+  
   const features = current.plan.features as unknown as string[] | null;
   return Array.isArray(features) ? features.includes(featureSlug) : false;
 }

@@ -9,6 +9,10 @@ const featureOptions = [
   "accounting",
   "multi-user",
   "multi-room",
+  "analytics",
+  "documents",
+  "prescriptions",
+  "tasks",
 ];
 
 const featureLabels: Record<string, string> = {
@@ -17,6 +21,10 @@ const featureLabels: Record<string, string> = {
   "accounting": "Muhasebe",
   "multi-user": "Çoklu Klinik Kontrol",
   "multi-room": "Çoklu Oda",
+  "analytics": "Raporlar",
+  "documents": "Dokümanlar",
+  "prescriptions": "Reçeteler",
+  "tasks": "Görevler",
 };
 
 async function createPlanAction(formData: FormData) {

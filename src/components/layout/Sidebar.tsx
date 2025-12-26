@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { signOut, useSession } from "next-auth/react";
-import { LogOut, Users, Calendar, ClipboardList, FileText, BarChart3, Building2, CreditCard, Settings, DoorOpen, Wallet, Receipt, CheckSquare } from "lucide-react";
+import { LogOut, Users, Calendar, ClipboardList, FileText, BarChart3, Building2, CreditCard, Settings, DoorOpen, Wallet, Receipt, CheckSquare, TrendingUp, FilePlus, File, Clock } from "lucide-react";
 import Link from "next/link";
 import NextImage from "next/image";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,11 @@ export function Sidebar() {
     { name: "Randevular", href: "/appointments", icon: Calendar, roles: ["ADMIN", "ASISTAN", "UZMAN"] },
     { name: "Uzmanlar", href: "/specialists", icon: ClipboardList, roles: ["ADMIN", "ASISTAN"] },
     { name: "Atamalar", href: "/assignments", icon: FileText, roles: ["ADMIN"] },
+    { name: "Görevler", href: "/tasks", icon: CheckSquare, roles: ["ADMIN", "ASISTAN", "UZMAN"], requiredFeature: "tasks" },
+    { name: "Reçeteler", href: "/prescriptions", icon: File, roles: ["ADMIN", "UZMAN"], requiredFeature: "prescriptions" },
+    { name: "Dokümanlar", href: "/documents", icon: File, roles: ["ADMIN", "ASISTAN", "UZMAN"], requiredFeature: "documents" },
+    { name: "Hatırlatıcılar", href: "/reminders", icon: Calendar, roles: ["ADMIN", "ASISTAN"] },
+    { name: "Raporlar", href: "/analytics", icon: BarChart3, roles: ["ADMIN", "UZMAN"], requiredFeature: "analytics" },
     { name: "Odalar", href: "/rooms", icon: DoorOpen, roles: ["ADMIN", "ASISTAN"], requiredFeature: "room-tracking" },
     { name: "Finans", href: "/finance", icon: CreditCard, roles: ["ADMIN", "ASISTAN", "UZMAN"], requiredFeature: "accounting" },
     { name: "Loglar", href: "/logs", icon: ClipboardList, roles: ["SUPER_ADMIN"] },

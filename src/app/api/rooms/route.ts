@@ -70,6 +70,15 @@ export async function POST(req: Request) {
     if (!(await hasFeature(session.user.clinicId, "room-tracking"))) {
       return NextResponse.json({ message: "Bu özellik paketinizde aktif değil" }, { status: 403 });
     }
+
+    // Check for multi-room limit
+    const existingCount = await prisma.room.count({ where: { clinicId: session.user.clinicId } });
+    if (existingCount >= 1) {
+      if (!(await hasFeature(session.user.clinicId, "multi-room"))) {
+        return NextResponse.json({ message: "Birden fazla oda eklemek için Çoklu Oda özelliği gereklidir." }, { status: 403 });
+      }
+    }
+
     const { name } = await req.json();
     if (!name || typeof name !== "string") {
       return NextResponse.json({ message: "Geçerli bir oda adı girin" }, { status: 400 });
