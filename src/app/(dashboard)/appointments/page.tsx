@@ -24,6 +24,14 @@ moment.locale("tr");
 const localizer = momentLocalizer(moment);
 
 export default function AppointmentCalendar() {
+  return (
+    <ToastProvider>
+      <AppointmentCalendarContent />
+    </ToastProvider>
+  );
+}
+
+function AppointmentCalendarContent() {
   const { data: session } = useSession();
   const { show } = useToast();
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
@@ -394,7 +402,6 @@ export default function AppointmentCalendar() {
   };
 
   return (
-    <ToastProvider>
     <div className="space-y-6">
       <Card>
         <CardHeader className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
@@ -815,6 +822,5 @@ export default function AppointmentCalendar() {
 
       {/* Modals kaldırıldı; inline kart formu kullanılıyor */}
     </div>
-    </ToastProvider>
   );
 }

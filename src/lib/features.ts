@@ -24,8 +24,6 @@ export async function getCurrentClinicPlan(clinicId: string) {
 }
 
 export async function hasFeature(clinicId: string, featureSlug: FeatureSlug): Promise<boolean> {
-  const session = await requireSession();
-  
   // Get current plan or default to Basic
   const current = await getCurrentClinicPlan(clinicId);
   

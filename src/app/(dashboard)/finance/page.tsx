@@ -166,6 +166,14 @@ function AccrualsTab() {
 }
 
 export default function FinancePage() {
+  return (
+    <ToastProvider>
+      <FinanceContent />
+    </ToastProvider>
+  );
+}
+
+function FinanceContent() {
   const { data: session } = useSession();
   const role = session?.user?.role;
   const isUzman = role === "UZMAN";
@@ -471,7 +479,6 @@ export default function FinancePage() {
           )}
         </Tabs>
       </div>
-    </ToastProvider>
   );
 }
 

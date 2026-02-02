@@ -159,6 +159,7 @@ model Patient {
   @@index([clinicId])
   @@index([name])
   @@index([phone])
+  @@index([assignedToId])
 }
 
 model FeeSchedule {
@@ -237,6 +238,7 @@ model Appointment {
   @@index([specialistId])
   @@index([roomId])
   @@index([date])
+  @@index([clinicId, date])
 }
 
 model Room {

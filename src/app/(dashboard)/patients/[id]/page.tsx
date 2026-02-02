@@ -569,6 +569,14 @@ function PatientNotes({ patientId }: { patientId: string }) {
 }
 
 export default function PatientDetailsPage({ params }: PatientDetailsProps) {
+  return (
+    <ToastProvider>
+      <PatientDetailsContent params={params} />
+    </ToastProvider>
+  );
+}
+
+function PatientDetailsContent({ params }: PatientDetailsProps) {
   // ✅ Unwrap params Promise using React.use()
   const { id } = React.use(params);
   const { data: session } = useSession();
@@ -788,26 +796,21 @@ export default function PatientDetailsPage({ params }: PatientDetailsProps) {
 
   if (isLoading) {
     return (
-      <ToastProvider>
-        <div className="container mx-auto py-8">
-          <div className="p-6 text-gray-400">Hasta bilgileri yükleniyor...</div>
-        </div>
-      </ToastProvider>
+      <div className="container mx-auto py-8">
+        <div className="p-6 text-gray-400">Hasta bilgileri yükleniyor...</div>
+      </div>
     );
   }
 
   if (!patient) {
     return (
-      <ToastProvider>
-        <div className="container mx-auto py-8">
-          <div className="text-center">Hasta bulunamadı</div>
-        </div>
-      </ToastProvider>
+      <div className="container mx-auto py-8">
+        <div className="text-center">Hasta bulunamadı</div>
+      </div>
     );
   }
 
   return (
-    <ToastProvider>
       <div className="container mx-auto py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -1132,6 +1135,5 @@ export default function PatientDetailsPage({ params }: PatientDetailsProps) {
           </Card>
         </div>
       </div>
-    </ToastProvider>
   );
 }

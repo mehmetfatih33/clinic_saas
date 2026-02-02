@@ -14,6 +14,14 @@ type WorkDayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 type WorkSchedule = Record<WorkDayKey, { closed: boolean; open?: string; close?: string }>;
 
 export default function SettingsPage() {
+  return (
+    <ToastProvider>
+      <SettingsContent />
+    </ToastProvider>
+  );
+}
+
+function SettingsContent() {
   const qc = useQueryClient();
   const { show } = useToast();
 
@@ -195,8 +203,7 @@ export default function SettingsPage() {
   const dayLabel: Record<WorkDayKey, string> = { mon: "Pzt", tue: "Sal", wed: "Çar", thu: "Per", fri: "Cum", sat: "Cmt", sun: "Paz" };
 
   return (
-    <ToastProvider>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <h1 className="text-2xl font-semibold">Ayarlar</h1>
 
         <Tabs defaultValue="clinic">
@@ -349,6 +356,5 @@ export default function SettingsPage() {
           />
         )}
       </div>
-    </ToastProvider>
   );
 }

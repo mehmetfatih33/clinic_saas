@@ -8,6 +8,14 @@ import { useState } from "react";
 import { ToastProvider, useToast } from "@/components/ui/ToastProvider";
 
 export default function NewPatientNotePage() {
+  return (
+    <ToastProvider>
+      <NewPatientNoteContent />
+    </ToastProvider>
+  );
+}
+
+function NewPatientNoteContent() {
   const params = useParams();
   const router = useRouter();
   const qc = useQueryClient();
@@ -51,8 +59,7 @@ export default function NewPatientNotePage() {
   });
 
   return (
-    <ToastProvider>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Yeni Not</h1>
         </div>
@@ -105,6 +112,5 @@ export default function NewPatientNotePage() {
           </CardContent>
         </Card>
       </div>
-    </ToastProvider>
   );
 }

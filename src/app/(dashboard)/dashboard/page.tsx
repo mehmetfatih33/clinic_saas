@@ -2,17 +2,24 @@
 "use client";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { Users, CreditCard, DollarSign, Calendar, UserCheck, Clock, FileText, Activity, Building2, Edit2, X, Save } from "lucide-react";
+import { Users, DollarSign, Calendar, UserCheck, Activity, Building2, Edit2, X, Save } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ToastProvider, useToast } from "@/components/ui/ToastProvider";
-import { ComposedChart, Bar, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, Label } from "recharts";
+import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import moment from "moment";
 
 export default function DashboardPage() {
+  return (
+    <ToastProvider>
+      <DashboardContent />
+    </ToastProvider>
+  );
+}
+
+function DashboardContent() {
   const [stats, setStats] = useState({ patients: 0, payments: 0, income: 0 });
-  const [loading, setLoading] = useState(true);
   const { data: session } = useSession();
   const { show } = useToast();
   const router = useRouter();
@@ -25,11 +32,6 @@ export default function DashboardPage() {
     }
   }, [session, router]);
 
-  if (session?.user?.role === "SUPER_ADMIN") {
-    return <div className="p-6">Yönlendiriliyor...</div>;
-  }
-
-  const [range, setRange] = useState<"ALL" | "1M" | "6M" | "1Y">("1M");
   const [notifiedIds, setNotifiedIds] = useState<Set<string>>(new Set());
   
   // Note editing state
@@ -193,7 +195,6 @@ export default function DashboardPage() {
   const totalExpense = transactions
     .filter((t: any) => t.type === "EXPENSE")
     .reduce((a: number, b: any) => a + Number(b.amount || 0), 0);
-  const totalSum = totalIncome + totalExpense;
   const netTotal = totalIncome - totalExpense;
   const donutData = [
     { name: "Gelir", value: totalIncome, color: "#6366f1" },
@@ -210,8 +211,6 @@ export default function DashboardPage() {
         }
       } catch (error) {
         console.error("Stats fetch error:", error);
-      } finally {
-        setLoading(false);
       }
     }
     fetchStats();
@@ -297,9 +296,13 @@ export default function DashboardPage() {
     }
   };
 
+  if (session?.user?.role === "SUPER_ADMIN") {
+    return <div className="p-6">Yönlendiriliyor...</div>;
+  }
+
   return (
-    <ToastProvider>
-    <div className="space-y-6">
+    <>
+      <div className="space-y-6">
       {isAdmin ? (
         <div className="space-y-6">
           <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
@@ -538,7 +541,7 @@ export default function DashboardPage() {
             {/* Recent activity items - dynamic data */}
             <div className="space-y-3">
               {/* Recent payments */}
-              {recentPayments.map((payment: any, index: number) => (
+              {recentPayments.map((payment: any) => (
                 <div key={`payment-${payment.id}`} className="flex items-start gap-3">
                   <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
                   <div>
@@ -559,7 +562,7 @@ export default function DashboardPage() {
               ))}
               
               {/* Recent patients */}
-              {activityFeed.slice(0, 2).map((patient: any, index: number) => (
+              {activityFeed.slice(0, 2).map((patient: any) => (
                 <div key={`patient-${patient.id}`} className="flex items-start gap-3">
                   <div className="w-2 h-2 bg-primary rounded-full mt-2"></div>
                   <div>
@@ -580,7 +583,7 @@ export default function DashboardPage() {
               ))}
               
               {/* Recent appointments */}
-              {recentAppointments.slice(0, 1).map((appointment: any, index: number) => (
+              {recentAppointments.slice(0, 1).map((appointment: any) => (
                 <div key={`appointment-${appointment.id}`} className="flex items-start gap-3">
                   <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
                   <div>
@@ -703,6 +706,6 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-    </ToastProvider>
+    </>
   );
 }

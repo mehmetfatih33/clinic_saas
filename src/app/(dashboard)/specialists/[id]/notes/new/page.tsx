@@ -9,6 +9,14 @@ import { useState } from "react";
 import { ToastProvider, useToast } from "@/components/ui/ToastProvider";
 
 export default function NewSpecialistNotePage() {
+  return (
+    <ToastProvider>
+      <NewSpecialistNoteContent />
+    </ToastProvider>
+  );
+}
+
+function NewSpecialistNoteContent() {
   const params = useParams();
   const router = useRouter();
   const qc = useQueryClient();
@@ -52,8 +60,7 @@ export default function NewSpecialistNotePage() {
   });
 
   return (
-    <ToastProvider>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Yeni Not</h1>
         </div>
@@ -103,7 +110,6 @@ export default function NewSpecialistNotePage() {
           </CardContent>
         </Card>
       </div>
-    </ToastProvider>
   );
 }
 

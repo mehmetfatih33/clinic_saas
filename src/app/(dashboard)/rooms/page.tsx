@@ -8,6 +8,14 @@ import { ToastProvider, useToast } from "@/components/ui/ToastProvider";
 import { useSession } from "next-auth/react";
 
 export default function RoomsPage() {
+  return (
+    <ToastProvider>
+      <RoomsContent />
+    </ToastProvider>
+  );
+}
+
+function RoomsContent() {
   const qc = useQueryClient();
   const { show } = useToast();
   const { data: session } = useSession();

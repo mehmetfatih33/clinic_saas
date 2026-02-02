@@ -43,28 +43,39 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
 
   const computeTimeSlots = (dateStr: string) => {
     if (!dateStr) return [] as string[];
-    const d = new Date(dateStr + "T00:00:00");
-    const weekday = d.getDay(); // 0=Sun
-    const map: Record<number, "sun"|"mon"|"tue"|"wed"|"thu"|"fri"|"sat"> = { 0: "sun", 1: "mon", 2: "tue", 3: "wed", 4: "thu", 5: "fri", 6: "sat" };
-    const key = map[weekday];
-    const ws = clinicSettings?.workSchedule?.[key];
-    const open = ws?.open || "08:00";
-    const close = ws?.close || "18:00";
-    const closed = ws?.closed === true;
-    if (closed) return [];
-    const [oh, om] = open.split(":").map(Number);
-    const [ch, cm] = close.split(":").map(Number);
-    const openMinutes = oh * 60 + om;
-    const closeMinutes = ch * 60 + cm;
-    const slotLength = 60; // 1 saatlik periyotlar
-    const lastStart = closeMinutes - slotLength;
-    const slots: string[] = [];
-    for (let t = openMinutes; t <= lastStart; t += slotLength) {
-      const h = Math.floor(t / 60);
-      const m = t % 60;
-      slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+    try {
+      const d = new Date(dateStr + "T00:00:00");
+      if (isNaN(d.getTime())) return [];
+      
+      const weekday = d.getDay(); // 0=Sun
+      const map: Record<number, "sun"|"mon"|"tue"|"wed"|"thu"|"fri"|"sat"> = { 0: "sun", 1: "mon", 2: "tue", 3: "wed", 4: "thu", 5: "fri", 6: "sat" };
+      const key = map[weekday];
+      const ws = clinicSettings?.workSchedule?.[key];
+      const open = ws?.open || "08:00";
+      const close = ws?.close || "18:00";
+      const closed = ws?.closed === true;
+      if (closed) return [];
+      
+      const [oh, om] = open.split(":").map(Number);
+      const [ch, cm] = close.split(":").map(Number);
+      
+      if (isNaN(oh) || isNaN(om) || isNaN(ch) || isNaN(cm)) return [];
+      
+      const openMinutes = oh * 60 + om;
+      const closeMinutes = ch * 60 + cm;
+      const slotLength = 60; // 1 saatlik periyotlar
+      const lastStart = closeMinutes - slotLength;
+      const slots: string[] = [];
+      for (let t = openMinutes; t <= lastStart; t += slotLength) {
+        const h = Math.floor(t / 60);
+        const m = t % 60;
+        slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+      }
+      return slots;
+    } catch (error) {
+      console.error("Time slot calculation error:", error);
+      return [];
     }
-    return slots;
   };
 
   // Get existing appointments for selected date
@@ -99,10 +110,15 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
     if (!form.selectedDate || !form.specialistId) return true;
     
     return !existingAppointments.some((apt: any) => {
-      const aptTime = new Date(apt.date).toLocaleTimeString('tr-TR', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
+      if (!apt.date) return false;
+      const d = new Date(apt.date);
+      if (isNaN(d.getTime())) return false;
+
+      // Safer time comparison
+      const h = d.getHours().toString().padStart(2, '0');
+      const m = d.getMinutes().toString().padStart(2, '0');
+      const aptTime = `${h}:${m}`;
+      
       return aptTime === time && apt.specialistId === form.specialistId;
     });
   };
@@ -136,7 +152,7 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
   });
 
   // Fetch specialists for dropdown
-  const { data: specialists = [] } = useQuery({
+  const { data: specialists = [], isLoading: specialistsLoading } = useQuery({
     queryKey: ["specialists"],
     queryFn: async () => {
       const res = await fetch("/api/specialists");
@@ -146,15 +162,24 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
     },
     enabled: open,
   });
-  const { data: rooms = [] } = useQuery({
+  const { data: rooms = [], isLoading: roomsLoading } = useQuery({
     queryKey: ["rooms", form.date, form.duration],
     queryFn: async () => {
       if (!form.date) return [] as any[];
-      const qs = `?date=${encodeURIComponent(form.date)}&duration=${form.duration}`;
-      const res = await fetch(`/api/rooms${qs}`);
-      if (!res.ok) throw new Error("Odalar yüklenemedi");
-      const json = await res.json();
-      return Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+      try {
+        const qs = `?date=${encodeURIComponent(form.date)}&duration=${form.duration}`;
+        const res = await fetch(`/api/rooms${qs}`);
+        if (!res.ok) {
+           console.error("Rooms fetch error:", res.status, res.statusText);
+           return [];
+        }
+        const json = await res.json();
+        const list = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+        return list.filter((r: any) => r && r.id);
+      } catch (error) {
+        console.error("Rooms query error:", error);
+        return [];
+      }
     },
     enabled: !!form.date,
   });
@@ -352,15 +377,21 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
                       <SelectValue placeholder="Uzman seçin..." className="text-gray-900 dark:text-white" />
                     </SelectTrigger>
                     <SelectContent className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
-                      {specialists.map((specialist: any) => (
-                        <SelectItem 
-                          key={specialist.id} 
-                          value={specialist.id}
-                          className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600"
-                        >
-                          {specialist.name} {specialist.specialist?.branch && `(${specialist.specialist.branch})`}
-                        </SelectItem>
-                      ))}
+                      {specialistsLoading ? (
+                        <SelectItem value="loading" disabled>Uzmanlar yükleniyor...</SelectItem>
+                      ) : specialists.length === 0 ? (
+                        <SelectItem value="empty" disabled>Kayıtlı uzman yok</SelectItem>
+                      ) : (
+                        specialists.map((specialist: any) => (
+                          <SelectItem 
+                            key={specialist.id} 
+                            value={specialist.id}
+                            className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600"
+                          >
+                            {specialist.name} {specialist.specialist?.branch && `(${specialist.specialist.branch})`}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 )}
@@ -515,18 +546,21 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
                       <SelectValue placeholder="Oda seçin..." className="text-gray-900 dark:text-white" />
                     </SelectTrigger>
                     <SelectContent className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
-                      {rooms.length === 0 && (
-                        <SelectItem value="" disabled className="text-gray-500">Uygun oda yok</SelectItem>
+                      {roomsLoading ? (
+                         <SelectItem value="loading" disabled>Odalar yükleniyor...</SelectItem>
+                      ) : rooms.length === 0 ? (
+                        <SelectItem value="empty" disabled className="text-gray-500">Uygun oda yok</SelectItem>
+                      ) : (
+                        rooms.map((room: any) => (
+                          <SelectItem 
+                            key={room.id} 
+                            value={String(room.id)}
+                            className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600"
+                          >
+                            {room.name}
+                          </SelectItem>
+                        ))
                       )}
-                      {rooms.map((room: any) => (
-                        <SelectItem 
-                          key={room.id} 
-                          value={room.id}
-                          className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600"
-                        >
-                          {room.name}
-                        </SelectItem>
-                      ))}
                     </SelectContent>
                   </Select>
                 </div>
