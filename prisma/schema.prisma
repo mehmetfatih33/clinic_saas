@@ -88,6 +88,9 @@ model User {
   uploadedDocuments          Document[]
   prescriptions              Prescription[]
   notifications              Notification[]
+
+  @@index([clinicId, role])
+  @@index([clinicId])
 }
 
 model SpecialistProfile {

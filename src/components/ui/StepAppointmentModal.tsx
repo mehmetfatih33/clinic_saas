@@ -148,7 +148,8 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
       const json = await res.json();
       return Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
     },
-    enabled: open,
+    enabled: true, // Modal açılmadan önce yüklenmeye başlasın
+    staleTime: 1000 * 60 * 5,
   });
 
   // Fetch specialists for dropdown
@@ -160,7 +161,8 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
       const json = await res.json();
       return Array.isArray(json) ? json : (Array.isArray(json?.experts) ? json.experts : []);
     },
-    enabled: open,
+    enabled: true, // Modal açılmadan önce yüklenmeye başlasın (Eager fetching)
+    staleTime: 1000 * 60 * 5, // 5 dakika boyunca önbellekten oku
   });
   const { data: rooms = [], isLoading: roomsLoading } = useQuery({
     queryKey: ["rooms", form.date, form.duration],

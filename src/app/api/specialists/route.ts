@@ -22,15 +22,9 @@ export async function GET() {
       include: { specialist: true },
     });
 
-    const patientGroups = await prisma.patient.groupBy({
-      by: ["assignedToId"],
-      where: { clinicId },
-      _count: { _all: true },
-    });
-    const patientCountMap = new Map<string, number>();
-    patientGroups.forEach((g: any) => {
-      if (g.assignedToId) patientCountMap.set(g.assignedToId, g._count._all || 0);
-    });
+    // Performans iyileştirmesi: Hasta sayılarını her seferinde hesaplamak yerine
+    // sadece uzman listesi için gerekli temel bilgileri dönüyoruz.
+    // Eğer istatistik gerekirse ayrı bir endpoint kullanılmalı.
 
     const data = specialists.map((sp: any) => ({
       id: sp.id,
@@ -41,7 +35,7 @@ export async function GET() {
         branch: sp.specialist?.branch ?? "Belirtilmemiş",
         defaultShare: sp.specialist?.defaultShare ?? 50,
         hourlyFee: (sp.specialist as any)?.hourlyFee ?? 0,
-        totalPatients: patientCountMap.get(sp.id) ?? 0,
+        totalPatients: 0, // Performans için devre dışı bırakıldı
         totalRevenue: sp.specialist?.totalRevenue ?? 0,
         bio: sp.specialist?.bio ?? "",
       },
