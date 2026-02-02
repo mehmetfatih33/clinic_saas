@@ -481,7 +481,7 @@ function FinanceContent() {
   );
 }
 
-function PlansTab() {
+export function PlansTab() {
   const qc = useQueryClient();
   const { show } = useToast();
   type Plan = {
