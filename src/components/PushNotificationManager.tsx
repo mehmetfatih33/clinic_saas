@@ -20,7 +20,7 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
-export function PushNotificationManager() {
+export function PushNotificationManager({ iconOnly = false }: { iconOnly?: boolean }) {
   const [isSupported, setIsSupported] = useState(false);
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
   const { show } = useToast();
@@ -49,6 +49,7 @@ export function PushNotificationManager() {
       
       if (!vapidPublicKey) {
         console.error("VAPID Public Key not found");
+        show("Bildirim anahtarı eksik (Vercel ENV kontrol edin)", "error");
         return;
       }
 
@@ -90,20 +91,28 @@ export function PushNotificationManager() {
   }
 
   if (!isSupported) {
-    return null; // or show a message
+    // Debugging: Show why it's not supported if explicitly requested via iconOnly (topbar)
+    if (iconOnly) {
+       return (
+         <Button variant="ghost" size="icon" title="Bildirimler bu tarayıcıda desteklenmiyor" disabled>
+           <BellOff className="h-4 w-4 text-gray-300" />
+         </Button>
+       );
+    }
+    return null;
   }
 
   return (
     <div className="flex items-center gap-2">
       {subscription ? (
-        <Button variant="outline" size="sm" onClick={unsubscribeFromPush} title="Bildirimleri Kapat">
-          <BellOff className="h-4 w-4 mr-2" />
-          Bildirimleri Kapat
+        <Button variant="outline" size={iconOnly ? "icon" : "sm"} onClick={unsubscribeFromPush} title="Bildirimleri Kapat">
+          <BellOff className="h-4 w-4" />
+          {!iconOnly && <span className="ml-2">Bildirimleri Kapat</span>}
         </Button>
       ) : (
-        <Button variant="default" size="sm" onClick={subscribeToPush} title="Bildirimleri Aç">
-          <Bell className="h-4 w-4 mr-2" />
-          Bildirimleri Aç
+        <Button variant="default" size={iconOnly ? "icon" : "sm"} onClick={subscribeToPush} title="Bildirimleri Aç">
+          <Bell className="h-4 w-4" />
+          {!iconOnly && <span className="ml-2">Bildirimleri Aç</span>}
         </Button>
       )}
     </div>
