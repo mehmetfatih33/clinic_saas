@@ -4,6 +4,8 @@ import { Topbar } from "@/components/layout/Topbar";
 import { QueryProvider } from "@/components/ui/QueryProvider";
 import { Toaster } from "sonner";
 
+import { PushNotificationManager } from "@/components/PushNotificationManager";
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <QueryProvider>
@@ -12,6 +14,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="sidebar-backdrop fixed inset-0 bg-black/40 z-40 md:hidden" />
         <div className="flex flex-1 flex-col">
           <Topbar />
+          <div className="px-3 pt-3 md:px-6 md:pt-6">
+            <PushNotificationManager />
+          </div>
           <main className="flex-1 p-3 md:p-6 overflow-y-auto">{children}</main>
         </div>
       </div>

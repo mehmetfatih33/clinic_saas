@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSession, ensureRole } from "@/lib/authz";
 import { hasFeature } from "@/lib/features";
 import { sendEmail } from "@/lib/mailer";
+import { sendPushNotification } from "@/lib/web-push";
 
 export async function POST(req: Request) {
   try {
@@ -74,6 +75,32 @@ export async function POST(req: Request) {
         console.log("✅ Notification created:", notif.id);
       } catch (e) {
         console.error("❌ Notification create error:", e);
+      }
+      // 3. Send Push Notification
+      try {
+        const subscriptions = await prisma.pushSubscription.findMany({
+          where: { userId: assignedToId },
+        });
+
+        for (const sub of subscriptions) {
+          await sendPushNotification(
+            {
+              endpoint: sub.endpoint,
+              keys: {
+                p256dh: sub.p256dh,
+                auth: sub.auth,
+              },
+            },
+            {
+              title: "Yeni Görev Atandı",
+              body: `${title} - ${description ? description.substring(0, 50) + "..." : "Detaylar için dokunun"}`,
+              url: "/tasks",
+            }
+          );
+        }
+        console.log(`✅ Push notifications sent to ${subscriptions.length} devices.`);
+      } catch (e) {
+        console.error("❌ Push notification error:", e);
       }
     } else {
         console.log("⚠️ No notification sent. assignedToId:", assignedToId, "Email:", task.assignedTo?.email);

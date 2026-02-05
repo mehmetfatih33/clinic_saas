@@ -88,9 +88,24 @@ model User {
   uploadedDocuments          Document[]
   prescriptions              Prescription[]
   notifications              Notification[]
+  pushSubscriptions          PushSubscription[]
 
   @@index([clinicId, role])
   @@index([clinicId])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model SpecialistProfile {
