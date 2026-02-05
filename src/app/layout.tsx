@@ -2,6 +2,10 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { ClientProviders } from "@/components/providers/ClientProviders";
 
+export const viewport = {
+  themeColor: "#ffffff",
+};
+
 export const metadata: Metadata = { title: "Cliterapi", description: "Cliterapi - Klinik Yönetim Sistemi" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
