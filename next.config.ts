@@ -15,6 +15,8 @@ const withPWA = require("@ducanh2912/next-pwa").default({
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: process.cwd(),
+  // @ts-ignore
+  turbopack: {}, // Silences the Turbopack warning
   async headers() {
     return [
       {
