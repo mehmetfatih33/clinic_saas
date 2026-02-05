@@ -167,13 +167,33 @@ function AccrualsTab() {
 
 export default function FinancePage() {
   return (
-    <ToastProvider>
-      <FinanceContent />
-    </ToastProvider>
+    <div className="p-6 space-y-6">
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-800">Finans Yönetimi</h1>
+      </div>
+
+      <Tabs defaultValue="transactions">
+        <TabsList>
+          <TabsTrigger value="transactions">Gelir/Gider İşlemleri</TabsTrigger>
+          <TabsTrigger value="payments">Hasta Ödemeleri</TabsTrigger>
+          <TabsTrigger value="plans">Ödeme Planları</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="transactions">
+          <TransactionsTab />
+        </TabsContent>
+        <TabsContent value="payments">
+          <PaymentsTab />
+        </TabsContent>
+        <TabsContent value="plans">
+          <PlansTab />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
 
-function FinanceContent() {
+function TransactionsTab() {
   const { data: session } = useSession();
   const role = session?.user?.role;
   const isUzman = role === "UZMAN";
@@ -481,7 +501,7 @@ function FinanceContent() {
   );
 }
 
-export function PlansTab() {
+function PlansTab() {
   const qc = useQueryClient();
   const { show } = useToast();
   type Plan = {
