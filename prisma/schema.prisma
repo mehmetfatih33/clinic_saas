@@ -139,6 +139,7 @@ model SpecialistTimeOff {
   @@index([clinicId])
   @@index([specialistId])
   @@index([start, end])
+  @@index([clinicId, specialistId, start])
 }
 
 model Patient {
@@ -257,6 +258,8 @@ model Appointment {
   @@index([roomId])
   @@index([date])
   @@index([clinicId, date])
+  @@index([clinicId, specialistId, status, date])
+  @@index([clinicId, roomId, status, date])
 }
 
 model Room {

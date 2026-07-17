@@ -31,70 +31,6 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
     notes: "",
   });
   
-  // Clinic schedule
-  const { data: clinicSettings } = useQuery({
-    queryKey: ["clinic-settings"],
-    queryFn: async () => {
-      const res = await fetch("/api/clinic/settings");
-      if (!res.ok) return null;
-      return res.json();
-    }
-  });
-
-  const computeTimeSlots = (dateStr: string) => {
-    if (!dateStr) return [] as string[];
-    try {
-      const d = new Date(dateStr + "T00:00:00");
-      if (isNaN(d.getTime())) return [];
-      
-      const weekday = d.getDay(); // 0=Sun
-      const map: Record<number, "sun"|"mon"|"tue"|"wed"|"thu"|"fri"|"sat"> = { 0: "sun", 1: "mon", 2: "tue", 3: "wed", 4: "thu", 5: "fri", 6: "sat" };
-      const key = map[weekday];
-      const ws = clinicSettings?.workSchedule?.[key];
-      const open = ws?.open || "08:00";
-      const close = ws?.close || "18:00";
-      const closed = ws?.closed === true;
-      if (closed) return [];
-      
-      const [oh, om] = open.split(":").map(Number);
-      const [ch, cm] = close.split(":").map(Number);
-      
-      if (isNaN(oh) || isNaN(om) || isNaN(ch) || isNaN(cm)) return [];
-      
-      const openMinutes = oh * 60 + om;
-      const closeMinutes = ch * 60 + cm;
-      const slotLength = 60; // 1 saatlik periyotlar
-      const lastStart = closeMinutes - slotLength;
-      const slots: string[] = [];
-      for (let t = openMinutes; t <= lastStart; t += slotLength) {
-        const h = Math.floor(t / 60);
-        const m = t % 60;
-        slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
-      }
-      return slots;
-    } catch (error) {
-      console.error("Time slot calculation error:", error);
-      return [];
-    }
-  };
-
-  // Get existing appointments for selected date
-  const { data: existingAppointments = [] } = useQuery({
-    queryKey: ["appointments", form.selectedDate],
-    queryFn: async () => {
-      if (!form.selectedDate) return [];
-      const res = await fetch(`/api/appointments?date=${form.selectedDate}`);
-      if (!res.ok) return [];
-      const json = await res.json();
-      const appointments = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
-      return appointments.filter((apt: any) => {
-        const aptDate = new Date(apt.date).toISOString().split('T')[0];
-        return aptDate === form.selectedDate;
-      });
-    },
-    enabled: !!form.selectedDate,
-  });
-  
   const { show: showToast } = useToast();
   const qc = useQueryClient();
 
@@ -105,23 +41,30 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
     }
   }, [session]);
 
-  // Check if time slot is available
-  const isTimeSlotAvailable = (time: string) => {
-    if (!form.selectedDate || !form.specialistId) return true;
-    
-    return !existingAppointments.some((apt: any) => {
-      if (!apt.date) return false;
-      const d = new Date(apt.date);
-      if (isNaN(d.getTime())) return false;
+  const { data: availability = [], isLoading: availabilityLoading } = useQuery<
+    { time: string; status: "busy" | "free" }[]
+  >({
+    queryKey: ["availability", form.specialistId, form.selectedDate, form.duration],
+    queryFn: async () => {
+      if (!form.specialistId || !form.selectedDate) return [];
+      const sp = new URLSearchParams({
+        specialistId: form.specialistId,
+        date: form.selectedDate,
+        duration: String(form.duration),
+      });
+      const res = await fetch(`/api/availability?${sp.toString()}`);
+      if (!res.ok) return [];
+      const json = await res.json().catch(() => ({}));
+      return Array.isArray(json?.items) ? json.items : [];
+    },
+    enabled: !!form.specialistId && !!form.selectedDate,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
 
-      // Safer time comparison
-      const h = d.getHours().toString().padStart(2, '0');
-      const m = d.getMinutes().toString().padStart(2, '0');
-      const aptTime = `${h}:${m}`;
-      
-      return aptTime === time && apt.specialistId === form.specialistId;
-    });
-  };
+  // Check if time slot is available
+  const isTimeSlotAvailable = (time: string) =>
+    availability.find((slot) => slot.time === time)?.status !== "busy";
 
   // Handle time slot selection
   const handleTimeSelect = (time: string) => {
@@ -136,7 +79,7 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
     }
     
     const dateTime = `${form.selectedDate}T${time}`;
-    setForm({ ...form, selectedTime: time, date: dateTime });
+    setForm({ ...form, selectedTime: time, date: dateTime, roomId: "" });
   };
 
   // Fetch patients for dropdown
@@ -165,7 +108,7 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
     staleTime: 1000 * 60 * 5, // 5 dakika boyunca önbellekten oku
   });
   const { data: rooms = [], isLoading: roomsLoading } = useQuery({
-    queryKey: ["rooms", form.date, form.duration],
+    queryKey: ["rooms", form.selectedDate, form.selectedTime, form.duration],
     queryFn: async () => {
       if (!form.date) return [] as any[];
       try {
@@ -184,16 +127,8 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
       }
     },
     enabled: !!form.date,
-  });
-  const { data: timeoffs = [] } = useQuery<any[]>({
-    queryKey: ["timeoff", form.specialistId],
-    queryFn: async () => {
-      if (!form.specialistId) return [] as any[];
-      const res = await fetch(`/api/specialists/${form.specialistId}/timeoff`, { credentials: "include" });
-      if (!res.ok) return [] as any[];
-      return res.json();
-    },
-    enabled: !!form.specialistId,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 
   // Get patient's assigned specialist
@@ -217,17 +152,6 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
 
   const createAppointment = useMutation({
     mutationFn: async () => {
-      if (form.date) {
-        const x = new Date(form.date).getTime();
-        const blocked = timeoffs.some((t: any) => {
-          const s = new Date(t.start).getTime();
-          const e = t.end ? new Date(t.end).getTime() : undefined;
-          return e ? x >= s && x <= e : x >= s;
-        });
-        if (blocked) {
-          throw new Error("Seçilen saat uzman için tatil/izin gününde.");
-        }
-      }
       const res = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -456,7 +380,7 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
                   <Input
                     type="date"
                     value={form.selectedDate}
-                    onChange={(e) => setForm({ ...form, selectedDate: e.target.value, selectedTime: "", date: "" })}
+                    onChange={(e) => setForm({ ...form, selectedDate: e.target.value, selectedTime: "", date: "", roomId: "" })}
                     className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
                     min={new Date().toISOString().slice(0, 10)}
                   />
@@ -467,8 +391,13 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
                     <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       🕐 Saat Seçin
                     </label>
+                    {availabilityLoading ? (
+                      <div className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-500">
+                        Saatler yükleniyor...
+                      </div>
+                    ) : (
                     <div className="grid grid-cols-3 gap-2">
-                      {(computeTimeSlots(form.selectedDate)).map((time) => {
+                      {availability.map(({ time }) => {
                         const isAvailable = isTimeSlotAvailable(time);
                         const isSelected = form.selectedTime === time;
                         
@@ -494,6 +423,7 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
                         );
                       })}
                     </div>
+                    )}
                     
                     {form.selectedTime && (
                       <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
@@ -509,7 +439,7 @@ export default function StepAppointmentModal({ open, onClose, mode = "modal" }: 
                   <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
                     ⏱️ Süre (dakika)
                   </label>
-                  <Select value={form.duration.toString()} onValueChange={(value) => setForm({ ...form, duration: Number(value) })}>
+                  <Select value={form.duration.toString()} onValueChange={(value) => setForm({ ...form, duration: Number(value), selectedTime: "", date: "", roomId: "" })}>
                     <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
                       <SelectValue className="text-gray-900 dark:text-white" />
                     </SelectTrigger>
