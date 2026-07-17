@@ -8,6 +8,23 @@ import { Button } from "@/components/ui/button";
 import { NotificationBell } from "@/components/ui/NotificationBell";
 import { PushNotificationManager } from "@/components/PushNotificationManager";
 
+function runWhenIdle(callback: () => void, timeout = 1500) {
+  const view = globalThis as typeof globalThis & {
+    requestIdleCallback?: (cb: () => void, options?: { timeout: number }) => number;
+    cancelIdleCallback?: (id: number) => void;
+  };
+
+  if (typeof window === "undefined") return () => {};
+
+  if (typeof view.requestIdleCallback === "function") {
+    const idleId = view.requestIdleCallback(callback, { timeout });
+    return () => view.cancelIdleCallback?.(idleId);
+  }
+
+  const timerId = globalThis.setTimeout(callback, timeout);
+  return () => globalThis.clearTimeout(timerId);
+}
+
 export function Topbar() {
   const [dark, setDark] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -27,13 +44,17 @@ export function Topbar() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/my/clinics')
-      .then(r => r.json())
-      .then((d) => {
-        setClinics(d.items || []);
-        setActiveClinicId(d.activeClinicId || null);
-      })
-      .catch(() => {});
+    const cleanup = runWhenIdle(() => {
+      fetch('/api/my/clinics')
+        .then(r => r.json())
+        .then((d) => {
+          setClinics(d.items || []);
+          setActiveClinicId(d.activeClinicId || null);
+        })
+        .catch(() => {});
+    });
+
+    return cleanup;
   }, []);
 
   useEffect(() => {

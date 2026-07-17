@@ -9,6 +9,23 @@ import NextImage from "next/image";
 import { Button } from "@/components/ui/button";
 import clsx from "clsx";
 
+function runWhenIdle(callback: () => void, timeout = 1200) {
+  const view = globalThis as typeof globalThis & {
+    requestIdleCallback?: (cb: () => void, options?: { timeout: number }) => number;
+    cancelIdleCallback?: (id: number) => void;
+  };
+
+  if (typeof window === "undefined") return () => {};
+
+  if (typeof view.requestIdleCallback === "function") {
+    const idleId = view.requestIdleCallback(callback, { timeout });
+    return () => view.cancelIdleCallback?.(idleId);
+  }
+
+  const timerId = globalThis.setTimeout(callback, timeout);
+  return () => globalThis.clearTimeout(timerId);
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
@@ -29,7 +46,12 @@ export function Sidebar() {
       } catch {}
       finally { setFeaturesLoaded(true); }
     }
-    loadPlan();
+
+    const cleanup = runWhenIdle(() => {
+      void loadPlan();
+    });
+
+    return cleanup;
   }, []);
 
   // Define navigation items with role-based visibility

@@ -18,8 +18,26 @@ interface Notification {
   createdAt: string;
 }
 
+function runWhenIdle(callback: () => void, timeout = 2000) {
+  const view = globalThis as typeof globalThis & {
+    requestIdleCallback?: (cb: () => void, options?: { timeout: number }) => number;
+    cancelIdleCallback?: (id: number) => void;
+  };
+
+  if (typeof window === "undefined") return () => {};
+
+  if (typeof view.requestIdleCallback === "function") {
+    const idleId = view.requestIdleCallback(callback, { timeout });
+    return () => view.cancelIdleCallback?.(idleId);
+  }
+
+  const timerId = globalThis.setTimeout(callback, timeout);
+  return () => globalThis.clearTimeout(timerId);
+}
+
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
+  const [shouldLoad, setShouldLoad] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -35,6 +53,14 @@ export function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    const cleanup = runWhenIdle(() => {
+      setShouldLoad(true);
+    });
+
+    return cleanup;
+  }, []);
+
   const { data, isLoading } = useQuery({
     queryKey: ["notifications"],
     queryFn: async () => {
@@ -42,7 +68,10 @@ export function NotificationBell() {
       if (!res.ok) throw new Error("Bildirimler alınamadı");
       return res.json() as Promise<{ items: Notification[], unreadCount: number }>;
     },
-    refetchInterval: 30000, // Check every 30s
+    enabled: shouldLoad,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+    refetchInterval: shouldLoad ? 60_000 : false,
   });
 
   const markReadMutation = useMutation({
@@ -80,7 +109,10 @@ export function NotificationBell() {
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          setShouldLoad(true);
+          setIsOpen(!isOpen);
+        }}
         className="relative p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors"
       >
         <Bell size={20} />
