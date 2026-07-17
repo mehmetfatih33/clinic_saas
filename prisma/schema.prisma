@@ -378,6 +378,8 @@ model Payment {
   @@index([specialistId])
   @@index([clinicId])
   @@index([createdAt])
+  @@index([clinicId, createdAt])
+  @@index([clinicId, specialistId, createdAt])
 }
 
 model PaymentPlan {

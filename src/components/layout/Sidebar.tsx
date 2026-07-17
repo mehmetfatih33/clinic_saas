@@ -81,6 +81,7 @@ export function Sidebar() {
               <Link
                 key={item.name}
                 href={item.href}
+                prefetch={false}
                 className={clsx(
                   "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all",
                   isActive

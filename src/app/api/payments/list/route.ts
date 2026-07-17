@@ -26,7 +26,12 @@ export async function GET() {
     const payments = await prisma.payment.findMany({
       where: whereClause,
       orderBy: { createdAt: "desc" },
-      include: {
+      select: {
+        id: true,
+        amount: true,
+        specialistCut: true,
+        clinicCut: true,
+        createdAt: true,
         patient: { select: { name: true } },
         specialist: { select: { name: true } },
       },
