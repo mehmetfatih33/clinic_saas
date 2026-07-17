@@ -18,23 +18,6 @@ interface Notification {
   createdAt: string;
 }
 
-function runWhenIdle(callback: () => void, timeout = 2000) {
-  const view = globalThis as typeof globalThis & {
-    requestIdleCallback?: (cb: () => void, options?: { timeout: number }) => number;
-    cancelIdleCallback?: (id: number) => void;
-  };
-
-  if (typeof window === "undefined") return () => {};
-
-  if (typeof view.requestIdleCallback === "function") {
-    const idleId = view.requestIdleCallback(callback, { timeout });
-    return () => view.cancelIdleCallback?.(idleId);
-  }
-
-  const timerId = globalThis.setTimeout(callback, timeout);
-  return () => globalThis.clearTimeout(timerId);
-}
-
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [shouldLoad, setShouldLoad] = useState(false);
@@ -51,14 +34,6 @@ export function NotificationBell() {
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    const cleanup = runWhenIdle(() => {
-      setShouldLoad(true);
-    });
-
-    return cleanup;
   }, []);
 
   const { data, isLoading } = useQuery({

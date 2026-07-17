@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { NotificationBell } from "@/components/ui/NotificationBell";
 import { PushNotificationManager } from "@/components/PushNotificationManager";
 
-function runWhenIdle(callback: () => void, timeout = 1500) {
+function runWhenIdle(callback: () => void, timeout = 6000) {
   const view = globalThis as typeof globalThis & {
     requestIdleCallback?: (cb: () => void, options?: { timeout: number }) => number;
     cancelIdleCallback?: (id: number) => void;

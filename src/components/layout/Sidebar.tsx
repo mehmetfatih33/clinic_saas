@@ -9,7 +9,7 @@ import NextImage from "next/image";
 import { Button } from "@/components/ui/button";
 import clsx from "clsx";
 
-function runWhenIdle(callback: () => void, timeout = 1200) {
+function runWhenIdle(callback: () => void, timeout = 8000) {
   const view = globalThis as typeof globalThis & {
     requestIdleCallback?: (cb: () => void, options?: { timeout: number }) => number;
     cancelIdleCallback?: (id: number) => void;
