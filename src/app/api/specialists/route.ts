@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { ensureRole, requireSession } from "@/lib/authz";
 import { hash } from "bcryptjs";
 import { sendEmail } from "@/lib/mailer";
 import { generatePassword } from "@/lib/utils";
@@ -9,7 +8,7 @@ import { generatePassword } from "@/lib/utils";
 // ✅ TÜM UZMANLARI GETİR
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await requireSession();
     if (!session?.user) {
       console.error("❌ specialists GET unauthorized session");
       return NextResponse.json({ experts: [] }, { status: 401 });
@@ -51,26 +50,11 @@ export async function GET() {
 // ✅ YENİ UZMAN OLUŞTUR
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ message: "Yetkisiz erişim" }, { status: 401 });
-    }
+    const session = await requireSession();
+    ensureRole(session, ["ADMIN", "ASISTAN"]);
 
     const data = await req.json();
-    console.log("📝 Received data:", data);
-
-    const sessionClinicId = session.user.clinicId;
-    let clinic = null as any;
-    if (sessionClinicId) {
-      clinic = await prisma.clinic.findUnique({ where: { id: sessionClinicId } });
-    }
-    if (!clinic) {
-      clinic = await prisma.clinic.findUnique({ where: { slug: "default" } });
-    }
-    if (!clinic) {
-      clinic = await prisma.clinic.create({ data: { name: "Demo Klinik", slug: "default" } });
-    }
-    const clinicId = clinic.id as string;
+    const clinicId = session.user.clinicId;
 
     // Aynı e-posta var mı kontrol et
     const existing = await prisma.user.findUnique({

@@ -64,6 +64,5 @@ export const config = {
     "/clinics/:path*",
     "/finance/:path*",
     "/logs/:path*",
-    "/api/:path*",
   ],
 };

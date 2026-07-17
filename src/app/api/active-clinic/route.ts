@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireSession } from "@/lib/authz";
+import { getActiveClinicCookieOptions, requireSession } from "@/lib/authz";
 
 export async function POST(req: Request) {
   const session = await requireSession();
@@ -9,6 +9,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Geçersiz klinik" }, { status: 400 });
   }
   const res = NextResponse.json({ ok: true });
-  res.cookies.set("active_clinic_id", clinicId, { path: "/", httpOnly: false });
+  res.cookies.set("active_clinic_id", clinicId, getActiveClinicCookieOptions());
   return res;
 }

@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, ensureRole } from "@/lib/authz";
+import { hasFeature } from "@/lib/features";
 
 export async function GET(req: Request) {
   try {
     const session = await requireSession();
+    if (!(await hasFeature(session.user.clinicId, "accounting"))) {
+      return NextResponse.json({ message: "Bu özellik paketinizde aktif değil" }, { status: 403 });
+    }
     ensureRole(session, ["ADMIN", "ASISTAN"]);
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type");
@@ -23,6 +27,12 @@ export async function GET(req: Request) {
     return NextResponse.json(items);
   } catch (err: any) {
     console.error("FinanceTransaction GET error:", err);
+    if (err?.message === "UNAUTHORIZED") {
+      return NextResponse.json({ message: "Giris gerekli" }, { status: 401 });
+    }
+    if (err?.message === "FORBIDDEN") {
+      return NextResponse.json({ message: "Bu listeye erisim yetkiniz yok" }, { status: 403 });
+    }
     return NextResponse.json({ message: "Sunucu hatası" }, { status: 500 });
   }
 }
@@ -30,6 +40,9 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const session = await requireSession();
+    if (!(await hasFeature(session.user.clinicId, "accounting"))) {
+      return NextResponse.json({ message: "Bu özellik paketinizde aktif değil" }, { status: 403 });
+    }
     ensureRole(session, ["ADMIN", "ASISTAN"]);
     const body = await req.json();
     const { amount, type, date, description, accountId, categoryId, staffId, patientId } = body as {
@@ -101,7 +114,12 @@ export async function POST(req: Request) {
     return NextResponse.json(created, { status: 201 });
   } catch (err: any) {
     console.error("FinanceTransaction POST error:", err);
+    if (err?.message === "UNAUTHORIZED") {
+      return NextResponse.json({ message: "Giris gerekli" }, { status: 401 });
+    }
+    if (err?.message === "FORBIDDEN") {
+      return NextResponse.json({ message: "Bu islemi yapma yetkiniz yok" }, { status: 403 });
+    }
     return NextResponse.json({ message: "Sunucu hatası" }, { status: 500 });
   }
 }
-

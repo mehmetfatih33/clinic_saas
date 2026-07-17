@@ -6,18 +6,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
-import { ToastProvider, useToast } from "@/components/ui/ToastProvider";
+import { useToast } from "@/components/ui/ToastProvider";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-
-type Transaction = {
-  id: string;
-  type: "INCOME" | "EXPENSE";
-  amount: number;
-  description?: string;
-  date: string;
-  patient?: { id: string; name: string } | null;
-  specialist?: { id: string; name: string } | null;
-};
 
 function PaymentsTab() {
   type Payment = {
@@ -47,6 +37,8 @@ function PaymentsTab() {
       const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
       return { items };
     },
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
   if (isLoading) return <p className="p-6 text-gray-500">Yükleniyor...</p>;
   if (error) return (
@@ -123,6 +115,8 @@ function AccrualsTab() {
       if (!res.ok) throw new Error("Hakediş verileri yüklenemedi");
       return res.json();
     },
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
 
   if (isLoading) return <p className="p-6 text-gray-500">Yükleniyor...</p>;
@@ -166,37 +160,45 @@ function AccrualsTab() {
 }
 
 export default function FinancePage() {
+  const { data: session } = useSession();
+  const isUzman = session?.user?.role === "UZMAN";
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-800">Finans Yönetimi</h1>
       </div>
 
-      <Tabs defaultValue="transactions">
+      <Tabs defaultValue="payments">
         <TabsList>
-          <TabsTrigger value="transactions">Gelir/Gider İşlemleri</TabsTrigger>
           <TabsTrigger value="payments">Hasta Ödemeleri</TabsTrigger>
-          <TabsTrigger value="plans">Ödeme Planları</TabsTrigger>
+          <TabsTrigger value="accruals">Hakedişler</TabsTrigger>
+          {!isUzman && <TabsTrigger value="accounting">Kasa / Muhasebe</TabsTrigger>}
+          {!isUzman && <TabsTrigger value="plans">Planlı Ödemeler</TabsTrigger>}
         </TabsList>
 
-        <TabsContent value="transactions">
-          <TransactionsTab />
-        </TabsContent>
         <TabsContent value="payments">
           <PaymentsTab />
         </TabsContent>
-        <TabsContent value="plans">
-          <PlansTab />
+        <TabsContent value="accruals">
+          <AccrualsTab />
         </TabsContent>
+        {!isUzman && (
+          <TabsContent value="accounting">
+            <AccountingTab />
+          </TabsContent>
+        )}
+        {!isUzman && (
+          <TabsContent value="plans">
+            <PlansTab />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
 }
 
-function TransactionsTab() {
-  const { data: session } = useSession();
-  const role = session?.user?.role;
-  const isUzman = role === "UZMAN";
+function AccountingTab() {
   const qc = useQueryClient();
   const { show } = useToast();
   const [type, setType] = useState<"INCOME" | "EXPENSE">("INCOME");
@@ -219,21 +221,10 @@ function TransactionsTab() {
       const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
       return { items };
     },
-    enabled: !isUzman,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
   const transactions = Array.isArray(transactionsResp?.items) ? transactionsResp.items : [];
-
-  const { data: paymentsSummaryResp } = useQuery<any>({
-    queryKey: ["payments-summary"],
-    queryFn: async () => {
-      const res = await fetch("/api/payments/list");
-      if (!res.ok) return { items: [] };
-      const json = await res.json().catch(() => ({}));
-      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
-      return { items };
-    },
-  });
-  const paymentsSummary = Array.isArray(paymentsSummaryResp?.items) ? paymentsSummaryResp.items : [];
 
   const { data: patientsResp } = useQuery<any>({
     queryKey: ["patients"],
@@ -244,6 +235,8 @@ function TransactionsTab() {
       const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
       return items;
     },
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
   const patients = Array.isArray(patientsResp) ? patientsResp : [];
 
@@ -256,6 +249,8 @@ function TransactionsTab() {
       const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : (Array.isArray(json?.experts) ? json.experts : []));
       return items;
     },
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
   const specialists = Array.isArray(specialistsResp) ? specialistsResp : [];
 
@@ -268,6 +263,8 @@ function TransactionsTab() {
       const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
       return { items };
     },
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
   const categories = Array.isArray(categoriesResp?.items) ? categoriesResp.items : [];
   const [categoryId, setCategoryId] = useState("");
@@ -316,37 +313,13 @@ function TransactionsTab() {
   const totalExpense = totalOut;
   const net = totalIncome - totalExpense;
 
-  
-
   return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Finans</h1>
-        </div>
-        <Tabs defaultValue="payments">
-          <TabsList>
-            <TabsTrigger value="payments">Ödemeler</TabsTrigger>
-            <TabsTrigger value="accruals">Hakedişler</TabsTrigger>
-            {!isUzman && <TabsTrigger value="accounting">Kasa / Muhasebe</TabsTrigger>}
-            {!isUzman && <TabsTrigger value="plans">Planlı Ödemeler</TabsTrigger>}
-          </TabsList>
-
-          <TabsContent value="payments">
-            <PaymentsTab />
-          </TabsContent>
-
-          <TabsContent value="accruals">
-            <AccrualsTab />
-          </TabsContent>
-
-          {!isUzman && (
-          <TabsContent value="accounting">
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <Card className="bg-green-50"><CardContent className="p-4"><p className="text-sm text-gray-600">Toplam Gelir</p><p className="text-2xl font-semibold text-green-700">{totalIncome.toLocaleString("tr-TR")} ₺</p></CardContent></Card>
           <Card className="bg-red-50"><CardContent className="p-4"><p className="text-sm text-gray-600">Toplam Gider</p><p className="text-2xl font-semibold text-red-700">{totalExpense.toLocaleString("tr-TR")} ₺</p></CardContent></Card>
           <Card className="bg-blue-50"><CardContent className="p-4"><p className="text-sm text-gray-600">Net Kasa</p><p className="text-2xl font-semibold text-blue-700">{net.toLocaleString("tr-TR")} ₺</p></CardContent></Card>
-        </div>
+      </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div>
@@ -438,8 +411,6 @@ function TransactionsTab() {
           </CardContent>
         </Card>
 
-        
-
         <Card>
           <CardHeader>
             <h2 className="text-lg font-semibold">Kasa Hareketleri</h2>
@@ -487,17 +458,7 @@ function TransactionsTab() {
             )}
           </CardContent>
         </Card>
-
-          </TabsContent>
-          )}
-
-          {!isUzman && (
-          <TabsContent value="plans">
-            <PlansTab />
-          </TabsContent>
-          )}
-        </Tabs>
-      </div>
+    </div>
   );
 }
 
@@ -527,6 +488,8 @@ function PlansTab() {
       if (!res.ok) throw new Error("Planlar yüklenemedi");
       return res.json();
     },
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
   const { data: patients = [] } = useQuery<any[]>({
     queryKey: ["patients"],
@@ -537,6 +500,8 @@ function PlansTab() {
       const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
       return items;
     },
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
   const { data: specialists = [] } = useQuery<any[]>({
     queryKey: ["specialists"],
@@ -547,6 +512,8 @@ function PlansTab() {
       const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : (Array.isArray(json?.experts) ? json.experts : []));
       return items;
     },
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
   const createPlan = useMutation({
     mutationFn: async () => {
@@ -559,7 +526,7 @@ function PlansTab() {
   });
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: "PAID" | "CANCELED" }) => { const res = await fetch(`/api/payment-plans/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) }); if (!res.ok) { const err = await res.json(); throw new Error(err.message || "Güncelleme başarısız"); } return res.json(); },
-    onSuccess: (_, vars) => { show(vars.status === "PAID" ? "Ödeme tamamlandı" : "Plan iptal edildi", "success"); qc.invalidateQueries({ queryKey: ["payment-plans"] }); qc.invalidateQueries({ queryKey: ["transactions"] }); qc.invalidateQueries({ queryKey: ["payments"] }); },
+    onSuccess: (_, vars) => { show(vars.status === "PAID" ? "Ödeme tamamlandı" : "Plan iptal edildi", "success"); qc.invalidateQueries({ queryKey: ["payment-plans"] }); qc.invalidateQueries({ queryKey: ["transactions"] }); qc.invalidateQueries({ queryKey: ["payments"] }); qc.invalidateQueries({ queryKey: ["cash-transactions"] }); qc.invalidateQueries({ queryKey: ["accruals"] }); },
     onError: (e: any) => show(e.message || "Güncelleme yapılamadı", "error"),
   });
   const upcomingCount = plans.filter(p => p.status === "PLANNED").length;

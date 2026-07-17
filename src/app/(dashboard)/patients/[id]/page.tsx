@@ -25,12 +25,19 @@ function PaymentSection({
   patientName: string;
   hasSpecialist: boolean;
 }) {
+  const { data: session } = useSession();
   const [amount, setAmount] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const { show: showToast } = useToast();
   const queryClient = useQueryClient();
+  const canCreatePayment = ["ADMIN", "ASISTAN"].includes(session?.user?.role || "");
 
   const handlePayment = async () => {
+    if (!canCreatePayment) {
+      showToast("Odeme kaydi olusturma yetkiniz yok.", "error");
+      return;
+    }
+
     if (!amount || parseFloat(amount) <= 0) {
       showToast("İç tutarsız miktar", "error");
       return;
@@ -86,6 +93,11 @@ function PaymentSection({
           ⚠️ Bu hasta henüz bir uzmana atanmamış. Ödeme kaydedebilmek için önce uzman atayın.
         </div>
       )}
+      {!canCreatePayment && (
+        <div className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg">
+          Bu alanda odeme gecmisini gorebilirsin; yeni odeme kaydi sadece yonetim rolleri tarafindan olusturulabilir.
+        </div>
+      )}
       <div className="flex gap-2">
         <Input
           type="number"
@@ -95,16 +107,16 @@ function PaymentSection({
           className="flex-1"
           min="0"
           step="0.01"
-          disabled={!hasSpecialist || isProcessing}
+          disabled={!hasSpecialist || isProcessing || !canCreatePayment}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !isProcessing && hasSpecialist) {
+            if (e.key === "Enter" && !isProcessing && hasSpecialist && canCreatePayment) {
               handlePayment();
             }
           }}
         />
         <Button 
           onClick={handlePayment} 
-          disabled={!hasSpecialist || isProcessing || !amount}
+          disabled={!hasSpecialist || isProcessing || !amount || !canCreatePayment}
           className="min-w-[120px]"
         >
           {isProcessing ? "Kaydediliyor..." : "💳 Ödeme Al"}

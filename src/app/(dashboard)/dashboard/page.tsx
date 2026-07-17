@@ -1,7 +1,6 @@
 "use client";
-"use client";
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Users, DollarSign, Calendar, UserCheck, Activity, Building2, Edit2, X, Save } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -19,12 +18,17 @@ export default function DashboardPage() {
 }
 
 function DashboardContent() {
-  const [stats, setStats] = useState({ patients: 0, payments: 0, income: 0 });
   const { data: session } = useSession();
   const { show } = useToast();
   const router = useRouter();
   const isUzman = session?.user?.role === "UZMAN";
   const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "ASISTAN";
+  const notifiedIdsRef = useRef<Set<string>>(new Set());
+  
+  // Note editing state
+  const [editingAppointment, setEditingAppointment] = useState<any>(null);
+  const [noteContent, setNoteContent] = useState("");
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (session?.user?.role === "SUPER_ADMIN") {
@@ -32,12 +36,27 @@ function DashboardContent() {
     }
   }, [session, router]);
 
-  const [notifiedIds, setNotifiedIds] = useState<Set<string>>(new Set());
-  
-  // Note editing state
-  const [editingAppointment, setEditingAppointment] = useState<any>(null);
-  const [noteContent, setNoteContent] = useState("");
-  const queryClient = useQueryClient();
+  const { data: dashboardSummary } = useQuery({
+    queryKey: ["dashboard-summary", session?.user?.id, session?.user?.clinicId],
+    queryFn: async () => {
+      const res = await fetch("/api/dashboard/summary");
+      if (!res.ok) {
+        throw new Error("Dashboard verisi alınamadı");
+      }
+      return res.json();
+    },
+    enabled: !!session?.user,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const stats = dashboardSummary?.stats ?? { patients: 0, payments: 0, income: 0 };
+  const recentAppointments = dashboardSummary?.recentAppointments ?? [];
+  const activityFeed = dashboardSummary?.recentPatients ?? [];
+  const recentPayments = dashboardSummary?.recentPayments ?? [];
+  const adminOverview = dashboardSummary?.adminOverview;
+  const financeSummary = dashboardSummary?.financeSummary ?? { income: 0, expense: 0, net: 0 };
 
   // Note update mutation
   const updateNoteMutation = useMutation({
@@ -51,7 +70,7 @@ function DashboardContent() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["recent-appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
       setEditingAppointment(null);
       show("Not başarıyla güncellendi", "success");
     },
@@ -71,169 +90,33 @@ function DashboardContent() {
     }
   };
 
-  // Fetch appointments for recent activity (role-based)
-  const { data: recentAppointments = [] } = useQuery({
-    queryKey: ["recent-appointments", session?.user?.role],
-    queryFn: async () => {
-      const res = await fetch("/api/appointments");
-      if (!res.ok) return [];
-      const json = await res.json();
-      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
-      return items.slice(0, 3);
-    },
-    enabled: !!session?.user
-  });
-
-  // Fetch activity feed data (role-based)
-  const { data: activityFeed = [] } = useQuery({
-    queryKey: ["activity-feed", session?.user?.role],
-    queryFn: async () => {
-      const res = await fetch("/api/patients");
-      if (!res.ok) return [];
-      const json = await res.json();
-      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
-      return items.slice(0, 5);
-    },
-    enabled: !!session?.user
-  });
-
-  // Fetch payments for activity feed (role-based)
-  const { data: recentPayments = [] } = useQuery({
-    queryKey: ["recent-payments", session?.user?.role],
-    queryFn: async () => {
-      const res = await fetch("/api/payments");
-      if (!res.ok) return [];
-      const json = await res.json();
-      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
-      return items.slice(0, 3);
-    },
-    enabled: !!session?.user
-  });
-
-  const { data: allAppointments = [] } = useQuery({
-    queryKey: ["appointments-all"],
-    queryFn: async () => {
-      const res = await fetch("/api/appointments");
-      if (!res.ok) return [];
-      const json = await res.json();
-      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : (Array.isArray(json?.experts) ? json.experts : []));
-      return items;
-    },
-    enabled: isAdmin
-  });
-
-  const { data: allPatients = [] } = useQuery({
-    queryKey: ["patients-all"],
-    queryFn: async () => {
-      const res = await fetch("/api/patients");
-      if (!res.ok) return [];
-      const json = await res.json();
-      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
-      return items;
-    },
-    enabled: isAdmin
-  });
-
-  
-
-  const { data: roomsAll = [] } = useQuery({
-    queryKey: ["rooms-all"],
-    queryFn: async () => {
-      const res = await fetch("/api/rooms");
-      if (!res.ok) return [];
-      const json = await res.json();
-      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
-      return items;
-    },
-    enabled: isAdmin
-  });
-
-  const { data: roomsAvailable = [] } = useQuery({
-    queryKey: ["rooms-available"],
-    queryFn: async () => {
-      const date = new Date().toISOString();
-      const res = await fetch(`/api/rooms?date=${encodeURIComponent(date)}&duration=60`);
-      if (!res.ok) return [];
-      const json = await res.json();
-      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
-      return items;
-    },
-    enabled: isAdmin
-  });
-
-  const { data: transactions = [] } = useQuery({
-    queryKey: ["transactions-dashboard", session?.user?.role],
-    queryFn: async () => {
-      let url = "/api/transactions";
-      if (isUzman && session?.user?.id) {
-        url += `?specialistId=${session.user.id}`;
-      }
-      const res = await fetch(url);
-      if (!res.ok) return [];
-      const json = await res.json();
-      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
-      return items;
-    },
-    enabled: !!session?.user && (isAdmin || isUzman),
-  });
-
-  const { data: specialists = [] } = useQuery({
-    queryKey: ["specialists-dashboard"],
-    queryFn: async () => {
-      const res = await fetch("/api/specialists");
-      if (!res.ok) return [];
-      const json = await res.json();
-      const items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : (Array.isArray(json?.experts) ? json.experts : []));
-      return items;
-    },
-    enabled: isAdmin,
-  });
-
-  const totalIncome = transactions
-    .filter((t: any) => t.type === "INCOME")
-    .reduce((a: number, b: any) => a + Number(b.amount || 0), 0);
-  const totalExpense = transactions
-    .filter((t: any) => t.type === "EXPENSE")
-    .reduce((a: number, b: any) => a + Number(b.amount || 0), 0);
-  const netTotal = totalIncome - totalExpense;
+  const totalIncome = financeSummary.income ?? 0;
+  const totalExpense = financeSummary.expense ?? 0;
+  const netTotal = financeSummary.net ?? 0;
   const donutData = [
     { name: "Gelir", value: totalIncome, color: "#6366f1" },
     { name: "Gider", value: totalExpense, color: "#f59e0b" },
   ];
 
   useEffect(() => {
-    async function fetchStats() {
-      try {
-        const res = await fetch("/api/dashboard/stats");
-        if (res.ok) {
-          const data = await res.json();
-          setStats(data);
-        }
-      } catch (error) {
-        console.error("Stats fetch error:", error);
-      }
-    }
-    fetchStats();
-  }, []);
-
-  useEffect(() => {
     let timer: any;
     const roles = ["ADMIN", "ASISTAN", "UZMAN"];
     if (session?.user?.role && roles.includes(session.user.role)) {
       const tick = async () => {
+        if (document.hidden) return;
         const now = new Date();
         const to = new Date(now.getTime() + 60 * 60000);
-        const sp = new URLSearchParams({ from: now.toISOString(), to: to.toISOString() });
+        const sp = new URLSearchParams({ from: now.toISOString(), to: to.toISOString(), limit: "20" });
         const res = await fetch(`/api/appointments?${sp.toString()}`);
         if (!res.ok) return;
         const json = await res.json();
         const upcoming = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
         upcoming.forEach((a: any) => {
-          if (!notifiedIds.has(a.id)) {
+          if (!notifiedIdsRef.current.has(a.id)) {
             const t = new Date(a.date).toLocaleString("tr-TR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
             const msg = `⏰ 1 saat sonra randevu: ${a.patient?.name || "Hasta"} • ${a.specialist?.name || "Uzman"} • ${t}`;
             show(msg, "info");
-            setNotifiedIds(prev => new Set(prev).add(a.id));
+            notifiedIdsRef.current.add(a.id);
           }
         });
       };
@@ -241,7 +124,7 @@ function DashboardContent() {
       timer = setInterval(tick, 60000);
     }
     return () => { if (timer) clearInterval(timer); };
-  }, [session, notifiedIds, show]);
+  }, [session, show]);
 
   const cards = [
     { 
@@ -315,31 +198,31 @@ function DashboardContent() {
           <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
             <div className="rounded-xl bg-white p-5 border">
               <div className="flex items-center justify-between">
-                <div className="text-3xl font-bold">{Array.isArray(allAppointments) ? allAppointments.filter((a: any) => moment(a.date).isSame(moment(), "day") && a.status !== "CANCELED").length : 0}</div>
+                <div className="text-3xl font-bold">{adminOverview?.todayAppointments ?? 0}</div>
                 <Calendar className="text-blue-600" />
               </div>
               <div className="text-sm text-gray-500 mt-1">Bugünkü Randevular</div>
-              <div className="text-xs text-gray-400 mt-2">Toplam: {Array.isArray(allAppointments) ? allAppointments.length : 0}</div>
+              <div className="text-xs text-gray-400 mt-2">Toplam: {adminOverview?.totalAppointments ?? 0}</div>
             </div>
             <div className="rounded-xl bg-white p-5 border">
               <div className="flex items-center justify-between">
-                <div className="text-3xl font-bold">{allPatients.length}</div>
+                <div className="text-3xl font-bold">{adminOverview?.totalPatients ?? 0}</div>
                 <Users className="text-purple-600" />
               </div>
               <div className="text-sm text-gray-500 mt-1">Toplam Hastalar</div>
-              <div className="text-xs text-gray-400 mt-2">Son 30 gün: {Array.isArray(allPatients) ? allPatients.filter((p: any) => moment(p.createdAt).isAfter(moment().subtract(30, "days"))).length : 0}</div>
+              <div className="text-xs text-gray-400 mt-2">Son 30 gün: {adminOverview?.recentPatients30d ?? 0}</div>
             </div>
             <div className="rounded-xl bg-white p-5 border">
               <div className="flex items-center justify-between">
-                <div className="text-3xl font-bold">{roomsAll.length}</div>
+                <div className="text-3xl font-bold">{adminOverview?.totalRooms ?? 0}</div>
                 <Building2 className="text-indigo-600" />
               </div>
               <div className="text-sm text-gray-500 mt-1">Toplam Odalar</div>
-              <div className="text-xs text-green-600 mt-2">Uygun: {roomsAvailable.length}</div>
+              <div className="text-xs text-green-600 mt-2">Uygun: {adminOverview?.availableRooms ?? 0}</div>
             </div>
             <div className="rounded-xl bg-white p-5 border">
               <div className="flex items-center justify-between">
-                <div className="text-3xl font-bold">{specialists.length}</div>
+                <div className="text-3xl font-bold">{adminOverview?.totalSpecialists ?? 0}</div>
                 <UserCheck className="text-teal-600" />
               </div>
               <div className="text-sm text-gray-500 mt-1">Toplam Uzmanlar</div>

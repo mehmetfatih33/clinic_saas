@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireSession } from "@/lib/authz";
+import { ensureRole, requireSession } from "@/lib/authz";
+import { hasFeature } from "@/lib/features";
 
 export async function GET(req: Request) {
   try {
     const session = await requireSession();
+    if (!(await hasFeature(session.user.clinicId, "accounting"))) {
+      return NextResponse.json({ message: "Bu özellik paketinizde aktif değil" }, { status: 403 });
+    }
+    ensureRole(session, ["ADMIN", "ASISTAN", "UZMAN"]);
     const isUzman = session.user.role === "UZMAN";
     const { searchParams } = new URL(req.url);
     const monthStr = searchParams.get("month");
@@ -90,6 +95,12 @@ export async function GET(req: Request) {
 
     return NextResponse.json(items);
   } catch (err: any) {
+    if (err?.message === "UNAUTHORIZED") {
+      return NextResponse.json({ message: "Giris gerekli" }, { status: 401 });
+    }
+    if (err?.message === "FORBIDDEN") {
+      return NextResponse.json({ message: "Hak edis verilerine erisim yetkiniz yok" }, { status: 403 });
+    }
     return NextResponse.json({ message: "Accruals yüklenemedi" }, { status: 500 });
   }
 }

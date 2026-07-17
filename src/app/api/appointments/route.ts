@@ -111,6 +111,8 @@ export async function GET(req: Request) {
     const dateFilter = searchParams.get('date');
     const from = searchParams.get('from');
     const to = searchParams.get('to');
+    const limitParam = searchParams.get("limit");
+    const limit = limitParam ? Number.parseInt(limitParam, 10) : undefined;
 
     let whereClause: any =
       session.user.role === "UZMAN"
@@ -135,6 +137,7 @@ export async function GET(req: Request) {
         specialist: { select: { id: true, name: true } },
       },
       orderBy: { date: "asc" },
+      ...(Number.isFinite(limit) && limit && limit > 0 ? { take: limit } : {}),
     });
 
     return NextResponse.json({ ok: true, items: appointments ?? [] }, { status: 200 });

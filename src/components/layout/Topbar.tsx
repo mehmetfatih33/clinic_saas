@@ -6,6 +6,7 @@ import { signOut, useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { NotificationBell } from "@/components/ui/NotificationBell";
+import { PushNotificationManager } from "@/components/PushNotificationManager";
 
 export function Topbar() {
   const [dark, setDark] = useState(false);
@@ -143,6 +144,9 @@ export function Topbar() {
       </div>
       
       <div className="flex items-center gap-2">
+        {/* Push Notifications Subscription */}
+        <PushNotificationManager iconOnly />
+
         {/* Notifications */}
         <NotificationBell />
         

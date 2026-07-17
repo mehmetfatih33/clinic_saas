@@ -1,14 +1,10 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { ensureRole, ensureUserInClinic, requireSession } from '@/lib/authz';
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ message: 'Yetkisiz erişim' }, { status: 401 });
-    }
+    const session = await requireSession();
 
     const userRole = session.user.role;
     const userId = session.user.id;
@@ -38,15 +34,10 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ message: "Yetkisiz erişim. Lütfen giriş yapın." }, { status: 401 });
-    }
+    const session = await requireSession();
+    ensureRole(session, ["ADMIN", "ASISTAN", "UZMAN"]);
 
     const data = await req.json();
-
-    console.log("📥 Hasta kaydı isteği:", data);
-    console.log("🏥 Kullanıcı oturumu:", session?.user);
 
     // Gerekli alanları kontrol et
     const name = (data.name || '').trim();
@@ -95,6 +86,17 @@ export async function POST(req: Request) {
       birthDate = new Date(data.birthDate);
       if (isNaN(birthDate.getTime())) {
         return NextResponse.json({ message: "Geçersiz doğum tarihi" }, { status: 400 });
+      }
+    }
+
+    if (data.assignedToId) {
+      try {
+        await ensureUserInClinic(data.assignedToId, session.user.clinicId, ["UZMAN"]);
+      } catch {
+        return NextResponse.json(
+          { message: "Secilen uzman bu klinige ait degil." },
+          { status: 400 }
+        );
       }
     }
 

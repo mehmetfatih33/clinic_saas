@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireSession } from "@/lib/authz";
+import { ensureRole, requireSession } from "@/lib/authz";
+import { hasFeature } from "@/lib/features";
 
 export async function POST(req: Request) {
   try {
     const session = await requireSession();
+    if (!(await hasFeature(session.user.clinicId, "accounting"))) {
+      return NextResponse.json({ message: "Bu özellik paketinizde aktif değil" }, { status: 403 });
+    }
+    ensureRole(session, ["ADMIN", "ASISTAN"]);
     const body = await req.json();
 
     const { type, amount, description, patientId, specialistId, date } = body as {
@@ -65,6 +70,12 @@ export async function POST(req: Request) {
     return NextResponse.json(created, { status: 201 });
   } catch (err: any) {
     console.error("❌ Transaction create error:", err);
+    if (err?.message === "UNAUTHORIZED") {
+      return NextResponse.json({ message: "Giris gerekli" }, { status: 401 });
+    }
+    if (err?.message === "FORBIDDEN") {
+      return NextResponse.json({ message: "Islem olusturma yetkiniz yok" }, { status: 403 });
+    }
     return NextResponse.json({ message: "İşlem kaydedilemedi" }, { status: 500 });
   }
 }
@@ -72,14 +83,45 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   try {
     const session = await requireSession();
+    if (!(await hasFeature(session.user.clinicId, "accounting"))) {
+      return NextResponse.json({ message: "Bu özellik paketinizde aktif değil" }, { status: 403 });
+    }
+    ensureRole(session, ["ADMIN", "ASISTAN", "UZMAN"]);
     const { searchParams } = new URL(req.url);
     const patientId = searchParams.get("patientId");
     const specialistId = searchParams.get("specialistId");
     const type = searchParams.get("type");
+    const isUzman = session.user.role === "UZMAN";
 
     const where: any = { clinicId: session.user.clinicId };
-    if (patientId) where.patientId = patientId;
-    if (specialistId) where.specialistId = specialistId;
+    if (patientId) {
+      if (isUzman) {
+        const patient = await prisma.patient.findFirst({
+          where: {
+            id: patientId,
+            clinicId: session.user.clinicId,
+            assignedToId: session.user.id,
+          },
+          select: { id: true },
+        });
+
+        if (!patient) {
+          return NextResponse.json(
+            { message: "Bu hastanin islem kayitlarini gorme yetkiniz yok." },
+            { status: 403 }
+          );
+        }
+      }
+      where.patientId = patientId;
+    }
+    if (specialistId) {
+      where.specialistId = isUzman ? session.user.id : specialistId;
+    } else if (isUzman && !patientId) {
+      where.OR = [
+        { specialistId: session.user.id },
+        { patient: { assignedToId: session.user.id } },
+      ];
+    }
     if (type && ["INCOME", "EXPENSE"].includes(type)) where.type = type;
 
     const list = await prisma.transaction.findMany({
@@ -94,6 +136,12 @@ export async function GET(req: Request) {
     return NextResponse.json(list);
   } catch (err: any) {
     console.error("❌ Transaction list error:", err);
+    if (err?.message === "UNAUTHORIZED") {
+      return NextResponse.json({ message: "Giris gerekli" }, { status: 401 });
+    }
+    if (err?.message === "FORBIDDEN") {
+      return NextResponse.json({ message: "Islem kayitlarina erisim yetkiniz yok" }, { status: 403 });
+    }
     return NextResponse.json({ message: "İşlemler yüklenemedi" }, { status: 500 });
   }
 }

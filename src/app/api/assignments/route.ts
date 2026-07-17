@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireSession, ensureRole } from "@/lib/authz";
+import { ensureEntityInClinic, ensureRole, ensureUserInClinic, requireSession } from "@/lib/authz";
 
 export async function GET() {
   const session = await requireSession();
@@ -29,6 +29,13 @@ export async function POST(req: Request) {
   const data = await req.json();
 
   try {
+    await ensureEntityInClinic("patient", data.patientId, session.user.clinicId);
+    await ensureUserInClinic(data.specialistId, session.user.clinicId, ["UZMAN"]);
+
+    if (data.feeId) {
+      await ensureEntityInClinic("feeSchedule", data.feeId, session.user.clinicId);
+    }
+
     const assignment = await prisma.assignment.create({
       data: {
         clinicId: session.user.clinicId,
@@ -50,6 +57,12 @@ export async function POST(req: Request) {
     return NextResponse.json(assignment);
   } catch (error) {
     console.error("❌ Assignment oluşturulamadı:", error);
+    if (error instanceof Error && ["ENTITY_NOT_IN_CLINIC", "USER_NOT_IN_CLINIC"].includes(error.message)) {
+      return NextResponse.json(
+        { message: "Secilen kayitlar bu klinige ait degil." },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
       { message: "Assignment kaydedilemedi", error: String(error) },
       { status: 500 }

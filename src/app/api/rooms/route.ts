@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireSession } from "@/lib/authz";
+import { ensureEntityInClinic, requireSession } from "@/lib/authz";
 import { hasFeature } from "@/lib/features";
 
 export async function GET(req: Request) {
@@ -123,6 +123,7 @@ export async function PATCH(req: Request) {
     if (!id || typeof id !== "string") {
       return NextResponse.json({ message: "Geçersiz oda" }, { status: 400 });
     }
+    await ensureEntityInClinic("room", id, session.user.clinicId);
     const updated = await prisma.room.update({
       where: { id },
       data: {
@@ -134,6 +135,9 @@ export async function PATCH(req: Request) {
   } catch (err: any) {
     if (err?.message === "UNAUTHORIZED") {
       return NextResponse.json({ message: "Giriş gerekli" }, { status: 401 });
+    }
+    if (err?.message === "ENTITY_NOT_IN_CLINIC") {
+      return NextResponse.json({ message: "Oda bu klinige ait degil" }, { status: 403 });
     }
     return NextResponse.json({ message: "Oda güncellenemedi" }, { status: 500 });
   }

@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { hash } from "bcryptjs";
 import Link from "next/link";
 import { hasFeature } from "@/lib/features";
+import { ArrowLeft, Building2, CheckCircle2, KeyRound, Layers3, Sparkles } from "lucide-react";
 
 async function createClinicWithPlanAction(formData: FormData) {
   "use server";
@@ -89,83 +90,174 @@ export default async function Page({ searchParams }: { searchParams?: Promise<Re
   const error = typeof sp?.error === "string" ? sp.error : "";
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold">Yeni Klinik Oluştur</h1>
-      <div className="mt-6 rounded-lg border bg-white p-6">
-        {!!error && (
-          <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-red-700">{error}</div>
-        )}
-        <form action={createClinicWithPlanAction} className="space-y-6">
-          <div>
-            <h2 className="text-lg font-semibold">Klinik Bilgileri</h2>
-            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div className="space-y-8">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <div className="text-xs uppercase tracking-[0.18em] text-slate-400">New Tenant</div>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">Yeni Klinik</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+            Klinik kaydini, admin hesabini ve plan kurulumunu tek adimda olustur.
+          </p>
+        </div>
+        <Link
+          href="/admin/clinics"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+        >
+          <ArrowLeft className="h-4 w-4 text-slate-400" />
+          Kliniklere don
+        </Link>
+      </div>
+
+      {!!error && (
+        <div className="rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-red-700">
+          {error}
+        </div>
+      )}
+
+      <form action={createClinicWithPlanAction} className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="space-y-6">
+          <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-5">
               <div>
-                <label className="text-sm text-gray-700">Klinik Adı</label>
-                <input name="clinicName" className="mt-1 w-full rounded border px-3 py-2" required />
+                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Clinic</div>
+                <h2 className="mt-2 text-xl font-semibold text-slate-900">Klinik bilgileri</h2>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white">
+                <Building2 className="h-5 w-5" />
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="text-sm font-medium text-slate-700">Klinik adi</label>
+                <input
+                  name="clinicName"
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
+                  required
+                />
               </div>
               <div>
-                <label className="text-sm text-gray-700">Slug</label>
-                <input name="clinicSlug" className="mt-1 w-full rounded border px-3 py-2" placeholder="otomatik üretilebilir" />
+                <label className="text-sm font-medium text-slate-700">Slug</label>
+                <input
+                  name="clinicSlug"
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
+                  placeholder="bos birakabilirsin"
+                />
               </div>
             </div>
           </div>
 
-          <div>
-            <h2 className="text-lg font-semibold">Klinik Admin Bilgileri</h2>
-            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-5">
               <div>
-                <label className="text-sm text-gray-700">Ad Soyad</label>
-                <input name="adminName" className="mt-1 w-full rounded border px-3 py-2" required />
+                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Admin</div>
+                <h2 className="mt-2 text-xl font-semibold text-slate-900">Klinik admin hesabi</h2>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-600 text-white">
+                <KeyRound className="h-5 w-5" />
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="text-sm font-medium text-slate-700">Ad Soyad</label>
+                <input
+                  name="adminName"
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
+                  required
+                />
               </div>
               <div>
-                <label className="text-sm text-gray-700">E‑posta</label>
-                <input type="email" name="adminEmail" className="mt-1 w-full rounded border px-3 py-2" required />
+                <label className="text-sm font-medium text-slate-700">E-posta</label>
+                <input
+                  type="email"
+                  name="adminEmail"
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
+                  required
+                />
               </div>
-              <div>
-                <label className="text-sm text-gray-700">Şifre</label>
-                <input type="password" name="adminPassword" className="mt-1 w-full rounded border px-3 py-2" required />
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium text-slate-700">Sifre</label>
+                <input
+                  type="password"
+                  name="adminPassword"
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
+                  required
+                />
               </div>
             </div>
           </div>
+        </div>
 
-          <div>
-            <h2 className="text-lg font-semibold">Plan ve Süre Seçimi</h2>
-            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="space-y-6">
+          <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-5">
               <div>
-                <label className="text-sm text-gray-700">Plan</label>
-                <select name="planId" className="mt-1 w-full rounded border px-3 py-2" required defaultValue="">
-                  <option value="" disabled>Plan seçin</option>
+                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Plan</div>
+                <h2 className="mt-2 text-xl font-semibold text-slate-900">Paket ve sure</h2>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-600 text-white">
+                <Layers3 className="h-5 w-5" />
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-5">
+              <div>
+                <label className="text-sm font-medium text-slate-700">Plan secimi</label>
+                <select
+                  name="planId"
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
+                  required
+                  defaultValue=""
+                >
+                  <option value="" disabled>
+                    Plan secin
+                  </option>
                   {plans.map((p: any) => (
-                    <option key={p.id} value={p.id}>{p.name} ({p.slug})</option>
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({p.slug})
+                    </option>
                   ))}
                 </select>
               </div>
+
               <div>
-                <label className="text-sm text-gray-700">Abonelik Süresi</label>
-                <div className="mt-1 flex gap-2">
-                  <label className="flex items-center gap-2 border rounded px-3 py-2 cursor-pointer hover:bg-gray-50">
-                    <input type="radio" name="duration" value="15_DAYS" defaultChecked />
-                    <span className="text-sm">15 Gün (Ücretsiz)</span>
+                <label className="text-sm font-medium text-slate-700">Abonelik suresi</label>
+                <div className="mt-2 grid gap-2">
+                  <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50">
+                    <div className="flex items-center gap-3">
+                      <input type="radio" name="duration" value="15_DAYS" defaultChecked />
+                      <span>15 gun (ucretsiz)</span>
+                    </div>
+                    <CheckCircle2 className="h-4 w-4 text-slate-400" />
                   </label>
-                  <label className="flex items-center gap-2 border rounded px-3 py-2 cursor-pointer hover:bg-gray-50">
-                    <input type="radio" name="duration" value="1_MONTH" />
-                    <span className="text-sm">1 Ay</span>
+                  <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50">
+                    <div className="flex items-center gap-3">
+                      <input type="radio" name="duration" value="1_MONTH" />
+                      <span>1 ay</span>
+                    </div>
+                    <Sparkles className="h-4 w-4 text-slate-400" />
                   </label>
-                  <label className="flex items-center gap-2 border rounded px-3 py-2 cursor-pointer hover:bg-gray-50">
-                    <input type="radio" name="duration" value="1_YEAR" />
-                    <span className="text-sm">1 Yıl</span>
+                  <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50">
+                    <div className="flex items-center gap-3">
+                      <input type="radio" name="duration" value="1_YEAR" />
+                      <span>1 yil</span>
+                    </div>
+                    <Sparkles className="h-4 w-4 text-slate-400" />
                   </label>
                 </div>
               </div>
+
+              <button
+                type="submit"
+                className="inline-flex w-full items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+              >
+                Klinigi olustur
+              </button>
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <button type="submit" className="rounded bg-primary hover:bg-primary/90 px-4 py-2 text-white">Oluştur</button>
-            <Link href="/admin/clinics" className="rounded border px-4 py-2">İptal</Link>
-          </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   );
 }

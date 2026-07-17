@@ -31,6 +31,12 @@ export async function GET(req: Request) {
     return NextResponse.json(items);
   } catch (err: any) {
     console.error("CashTransactions GET error:", err);
+    if (err?.message === "UNAUTHORIZED") {
+      return NextResponse.json({ message: "Giris gerekli" }, { status: 401 });
+    }
+    if (err?.message === "FORBIDDEN") {
+      return NextResponse.json({ message: "Bu listeye erisim yetkiniz yok" }, { status: 403 });
+    }
     return NextResponse.json({ message: "Sunucu hatası" }, { status: 500 });
   }
 }
@@ -97,27 +103,18 @@ export async function POST(req: Request) {
         },
       });
 
-      // If this is an expense for a specialist, create a Payout record to update their balance
-      if (type === "OUT" && specialistId) {
-        await tx.payout.create({
-          data: {
-            clinicId: session.user.clinicId,
-            targetUserId: specialistId,
-            type: "SPECIALIST",
-            category: "OTHER",
-            amount,
-            note: description || "Finans modülünden ödeme",
-            date: date ? new Date(date) : undefined,
-          },
-        });
-      }
-
       return created;
     });
 
     return NextResponse.json(result, { status: 201 });
   } catch (err: any) {
     console.error("CashTransactions POST error:", err);
+    if (err?.message === "UNAUTHORIZED") {
+      return NextResponse.json({ message: "Giris gerekli" }, { status: 401 });
+    }
+    if (err?.message === "FORBIDDEN") {
+      return NextResponse.json({ message: "Bu islemi yapma yetkiniz yok" }, { status: 403 });
+    }
     return NextResponse.json({ message: "Sunucu hatası" }, { status: 500 });
   }
 }

@@ -4,6 +4,8 @@ import { requireSession, ensureRole } from "@/lib/authz";
 import { hash } from "bcryptjs";
 import { Role } from "@prisma/client";
 
+const assignableRoles: Role[] = ["ADMIN", "ASISTAN", "UZMAN", "PERSONEL"];
+
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -40,7 +42,12 @@ export async function PATCH(
       updateData.email = body.email;
     }
     if (body.phone !== undefined) updateData.phone = body.phone;
-    if (body.role) updateData.role = body.role as Role;
+    if (body.role) {
+      if (!assignableRoles.includes(body.role as Role)) {
+        return NextResponse.json({ message: "Bu rol atanamaz" }, { status: 403 });
+      }
+      updateData.role = body.role as Role;
+    }
     
     if (body.password && body.password.length >= 6) {
       updateData.passwordHash = await hash(body.password, 10);

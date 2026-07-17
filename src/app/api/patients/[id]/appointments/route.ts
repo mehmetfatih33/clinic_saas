@@ -10,9 +10,6 @@ export async function GET(
     const session = await requireSession();
     const { id: patientId } = await params;
 
-    console.log("📅 Fetching appointments for patient:", patientId);
-
-    // Build where clause based on user role
     let whereClause: any = {
       patientId,
       clinicId: session.user.clinicId,
@@ -23,16 +20,10 @@ export async function GET(
       whereClause.specialistId = session.user.id;
     }
 
-    // Fetch appointments without includes to avoid type issues
     const appointments = await prisma.appointment.findMany({
       where: whereClause,
-    });
-
-    // Manually fetch related data
-    const enrichedAppointments = await Promise.all(
-      appointments.map(async (appointment) => {
-        const specialist = await prisma.user.findUnique({
-          where: { id: appointment.specialistId },
+      include: {
+        specialist: {
           select: {
             id: true,
             name: true,
@@ -42,30 +33,23 @@ export async function GET(
               },
             },
           },
-        });
-
-        const sessionNotes = await prisma.note.findMany({
-          where: { appointmentId: appointment.id },
+        },
+        sessionNotes: {
           select: {
             id: true,
             content: true,
             createdAt: true,
           },
-        });
-
-        return {
-          ...appointment,
-          specialist,
-          sessionNotes,
-        };
-      })
-    );
-
-    // Sort by date descending
-    enrichedAppointments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-    console.log(`✅ Found ${enrichedAppointments.length} appointments for patient ${patientId}`);
-    return NextResponse.json(enrichedAppointments);
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
+      },
+      orderBy: {
+        date: "desc",
+      },
+    });
+    return NextResponse.json(appointments);
   } catch (error: any) {
     console.error("❌ Patient Appointments Fetch Error:", error);
     return NextResponse.json({ message: "Server Error", error: error.message }, { status: 500 });

@@ -6,7 +6,7 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
   swcMinify: true,
-  disable: false, // Enable PWA in development for testing push notifications
+  disable: process.env.NODE_ENV === "development" && process.env.ENABLE_PWA_DEV !== "true",
   workboxOptions: {
     disableDevLogs: true,
     importScripts: ["/custom-sw.js"], // Import custom service worker logic
